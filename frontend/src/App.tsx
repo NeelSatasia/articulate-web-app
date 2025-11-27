@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import UserName from './components/UserName';
 
 
 function App() {
-    return <h1>Hello World</h1>;
+    return <UserName/>;
 }
 
 export default App
