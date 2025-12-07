@@ -89,7 +89,7 @@ def edit_word_phrase(word_id: int, word_phrase: WordPhrase):
         result = supabase.table("word_bank").update({
             "word_phrase": word_phrase.word_phrase,
             "word_category_id": word_phrase.word_category_id
-        }).eq("word_id", word_id).execute()
+        }).eq("word_id", word_id).execute() # TODO: ensure only authorized user can access his/her word_id
 
         if result:
             return {
@@ -102,3 +102,24 @@ def edit_word_phrase(word_id: int, word_phrase: WordPhrase):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+
+@router.put("/category/{word_category_id}")
+def edit_word_category(word_category_id: int, word_category: WordCategory):
+    try:
+        result = supabase.table("word_category").update({
+            "word_category": word_category.word_category
+        }).eq("word_category_id", word_category_id).execute() # TODO: ensure only authorized user can access his/her word_category_id
+
+        if result:
+            return {
+                "message": f"A word-category updated for user with id {word_category.user_id}"
+            }
+
+        return {
+            "message": f"Failed to update a word-category for user id {word_category.user_id}!"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
