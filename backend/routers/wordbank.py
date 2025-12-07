@@ -7,7 +7,7 @@ router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
 # GET ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.get("/{user_id}")
-def user_word_bank(user_id: int):
+async def user_word_bank(user_id: int):
     try:
         result = supabase.table("word_bank").select("word_id, word_category_id, word_phrase").eq("user_id", user_id).execute()
 
@@ -15,7 +15,7 @@ def user_word_bank(user_id: int):
             return result.data
         
         return {
-            "message": f"Failed to fetch word bank of user with id {user_id}!"
+            "error": f"Failed to fetch word bank of user with id {user_id}!"
         }
     
     except Exception as e:
@@ -23,7 +23,7 @@ def user_word_bank(user_id: int):
 
    
 @router.get("/categories/{user_id}")
-def user_word_categories(user_id: int):
+async def user_word_categories(user_id: int):
     try:
         result = supabase.table("word_category").select("word_category_id, word_category").eq("user_id", user_id).execute()
 
@@ -31,7 +31,7 @@ def user_word_categories(user_id: int):
             return result.data
         
         return {
-            "message": f"Failed to fetch word categories for user with id {user_id}"
+            "error": f"Failed to fetch word categories for user with id {user_id}"
         }
     
     except Exception as e:
@@ -40,7 +40,7 @@ def user_word_categories(user_id: int):
 # POST ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.post("/word-phrase")
-def new_user_word(new_word_phrase: WordPhrase):
+async def new_user_word(new_word_phrase: WordPhrase):
     try:
         result = supabase.table("word_bank").insert({
             "user_id": new_word_phrase.user_id,
@@ -54,7 +54,7 @@ def new_user_word(new_word_phrase: WordPhrase):
             }
 
         return {
-            "message": f"Failed to add a new word/phrase for user id {new_word_phrase.user_id}:"
+            "error": f"Failed to add a new word/phrase for user id {new_word_phrase.user_id}:"
         }
     
     except Exception as e:
@@ -62,7 +62,7 @@ def new_user_word(new_word_phrase: WordPhrase):
     
 
 @router.post("/category")
-def new_user_word_cateogory(new_word_category: WordCategory):
+async def new_user_word_cateogory(new_word_category: WordCategory):
     try:
         result = supabase.table("word_category").insert({
             "user_id": new_word_category.user_id,
@@ -75,7 +75,7 @@ def new_user_word_cateogory(new_word_category: WordCategory):
             }
 
         return {
-            "message": f"Failed to add a new category for user id {new_word_category.user_id}!"
+            "error": f"Failed to add a new category for user id {new_word_category.user_id}!"
         }
     
     except Exception as e:
@@ -84,7 +84,7 @@ def new_user_word_cateogory(new_word_category: WordCategory):
 # PUT ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.put("/word-phrase/{word_id}")
-def edit_word_phrase(word_id: int, word_phrase: WordPhrase):
+async def edit_word_phrase(word_id: int, word_phrase: WordPhrase):
     try:
         result = supabase.table("word_bank").update({
             "word_phrase": word_phrase.word_phrase,
@@ -97,7 +97,7 @@ def edit_word_phrase(word_id: int, word_phrase: WordPhrase):
             }
 
         return {
-            "message": f"Failed to update a word-phrase for user id {word_phrase.user_id}!"
+            "error": f"Failed to update a word-phrase for user id {word_phrase.user_id}!"
         }
 
     except Exception as e:
@@ -105,7 +105,7 @@ def edit_word_phrase(word_id: int, word_phrase: WordPhrase):
     
 
 @router.put("/category/{word_category_id}")
-def edit_word_category(word_category_id: int, word_category: WordCategory):
+async def edit_word_category(word_category_id: int, word_category: WordCategory):
     try:
         result = supabase.table("word_category").update({
             "word_category": word_category.word_category
@@ -117,9 +117,45 @@ def edit_word_category(word_category_id: int, word_category: WordCategory):
             }
 
         return {
-            "message": f"Failed to update a word-category for user id {word_category.user_id}!"
+            "error": f"Failed to update a word-category for user id {word_category.user_id}!"
         }
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
+# DELETE ---------------------------------------------------------------------------------------------------------------------------------------
+
+@router.delete("/word-phrase/{word_id}")
+async def del_word_phrase(word_id: int):
+    try:
+        result = supabase.table("word_bank").delete().eq("word_id", word_id).execute()
+
+        if result:
+            return {
+                "message": f"A word-phrase deleted"
+            }
+
+        return {
+            "error": f"Failed to delete a word-phrase!"
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    
+@router.delete("/category/{word_category_id}")
+async def del_word_category(word_category_id: int):
+    try:
+        result = supabase.table("word_category").delete().eq("word_category_id", word_category_id).execute()
+
+        if result:
+            return {
+                "message": f"A word-category deleted"
+            }
+
+        return {
+            "error": f"Failed to delete a word-category!"
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
