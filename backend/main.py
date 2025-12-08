@@ -3,9 +3,13 @@ import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from routers import users, wordbank, auth
+from dotenv import load_dotenv
+import os
 
 
-SECRET_SESSION_KEY = "random_secret_string_for_session_encryption"
+load_dotenv()
+
+SECRET_SESSION_KEY = os.getenv("SECRET_SESSION_KEY")
 
 app = FastAPI()
 
