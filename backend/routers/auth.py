@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuth
+from database import supabase
 from dotenv import load_dotenv
 import os
 
@@ -10,7 +11,7 @@ load_dotenv()
 
 GOOGLE_CLIENT_ID = os.getenv("CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-REDIRECT_URI = "http://localhost:8000/auth"
+REDIRECT_URI = "http://localhost:8000"
 
 oauth = OAuth()
 oauth.register(
@@ -20,7 +21,7 @@ oauth.register(
     server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
     client_kwargs={
         'scope': 'openid email profile',
-        'redirect_uri': REDIRECT_URI
+        'redirect_uri': 'http://localhost:8000/auth'
     }
 )
 
@@ -33,12 +34,31 @@ async def auth(request: Request):
     except Exception as e:
         return {"error": "OAuth handshake failed", "details": str(e)}
 
-    # Extract user info from the token
     user = token.get('userinfo')
     
-    # Store user in session (simple cookie-based session)
     if user:
-        request.session['user'] = user
+        response = supabase.table("users").select("user_id").eq("user_email", user.get("email")).execute()
+        
+        internal_user_id = None
+        
+        if response.data and len(response.data) > 0:
+            internal_user_id = response.data[0]['user_id']
+        else:
+            new_user = supabase.table("users").insert({
+                "user_name": user.get("name"),
+                "user_email": user.get("email")
+                }).execute()
+            internal_user_id = new_user.data[0]['user_id']
+
+        session_data = {
+            "google_sub": user.get("sub"),
+            "email": user.get("email"),
+            "name": user.get("name"),
+            "picture": user.get("picture"),
+            "user_id": internal_user_id
+        }
+        
+        request.session['user'] = session_data
     
     return RedirectResponse(url=REDIRECT_URI)
 
