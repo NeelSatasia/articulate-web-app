@@ -12,13 +12,13 @@ async def user_word_bank(request: Request):
     
     if user:
         try:
-            result = supabase.table("word_bank").select("word_id, word_category_id, word_phrase").eq("user_id", user["user_id"]).execute()
+            result = supabase.table("word_bank").select("word_id, word_category_id, word_phrase").eq("user_id", user["user_id"]).order("word_category_id").execute()
 
             if result:
                 return result.data
             
             return {
-                "error": f"Failed to fetch word bank of user with id {user_id}!"
+                "error": f"Failed to fetch word bank of user with id {user["user_id"]}!"
             }
         
         except Exception as e:
@@ -67,11 +67,11 @@ async def new_user_word(new_word_phrase: WordPhrase, request: Request):
 
             if result:
                 return {
-                    "message": f"New word added for user with id {new_word_phrase.user_id}"
+                    "message": f"New word added for user with id {user["user_id"]}"
                 }
 
             return {
-                "error": f"Failed to add a new word/phrase for user id {new_word_phrase.user_id}:"
+                "error": f"Failed to add a new word/phrase for user id {user["user_id"]}"
             }
         
         except Exception as e:
@@ -95,11 +95,11 @@ async def new_user_word_cateogory(new_word_category: WordCategory, request: Requ
 
             if result:
                 return {
-                    "message": f"New word category added for user with id {new_word_category.user_id}"
+                    "message": f"New word category added for user with id {user["user_id"]}"
                 }
 
             return {
-                "error": f"Failed to add a new category for user id {new_word_category.user_id}!"
+                "error": f"Failed to add a new category for user id {user["user_id"]}!"
             }
         
         except Exception as e:
@@ -124,11 +124,11 @@ async def edit_word_phrase(word_id: int, word_phrase: WordPhrase, request: Reque
 
             if result:
                 return {
-                    "message": f"A word-phrase updated for user with id {word_phrase.user_id}"
+                    "message": f"A word-phrase updated for user with id {user["user_id"]}"
                 }
 
             return {
-                "error": f"Failed to update a word-phrase for user id {word_phrase.user_id}!"
+                "error": f"Failed to update a word-phrase for user id {user["user_id"]}!"
             }
 
         except Exception as e:
@@ -151,11 +151,11 @@ async def edit_word_category(word_category_id: int, word_category: str, request:
 
             if result:
                 return {
-                    "message": f"A word-category updated for user with id {word_category.user_id}"
+                    "message": f"A word-category updated for user with id {user["user_id"]}"
                 }
 
             return {
-                "error": f"Failed to update a word-category for user id {word_category.user_id}!"
+                "error": f"Failed to update a word-category for user id {user["user_id"]}!"
             }
 
         except Exception as e:
