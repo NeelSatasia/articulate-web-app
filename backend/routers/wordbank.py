@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from database import supabase
-from models import WordPhrase, WordCategory
+from models import WordPhrase
 
 router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
 
@@ -83,14 +83,14 @@ async def new_user_word(new_word_phrase: WordPhrase, request: Request):
     
 
 @router.post("/category")
-async def new_user_word_cateogory(new_word_category: WordCategory, request: Request):
+async def new_user_word_cateogory(new_word_category: str, request: Request):
     user = request.session.get('user')
     
     if user:
         try:
             result = supabase.table("word_category").insert({
                 "user_id": user["user_id"],
-                "word_category": new_word_category.word_category
+                "word_category": new_word_category
             }).execute()
 
             if result:
