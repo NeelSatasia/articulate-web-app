@@ -3,6 +3,7 @@ import api from '../api'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion'
 import { Table, TableBody, TableCell, TableRow } from './ui/table'
 import "/src/WordBank.css"
+import { Button } from './ui/button'
 
 interface Category {
     word_category_id: number
@@ -65,27 +66,40 @@ const WordBank = () => {
         getWordBank()
     }, [])
 
+    const [accordionDefaults, setAccordionDefaults] = useState<string[]>([])
+
+    useEffect(() => {
+        if (categories && categories.size > 0) {
+            const updatedCategories = Array.from(categories).map(
+                ([categoryID, categoryName]) => `${categoryName}-${categoryID}`
+            )
+
+            setAccordionDefaults(updatedCategories)
+        }
+    }, [categories])
+    
+
     return (
         
         <div>
-            <Accordion type="multiple" >
+            <Button className="bg-orange-600 hover:bg-orange-500 mb-4">Edit</Button>
+
+            <Accordion type="multiple" value={accordionDefaults} onValueChange={(v) => setAccordionDefaults(v)} >
                 {Array.from(categories).map(([categoryID, categoryName]) => (
-                    <div key={"category-content-" + categoryName} className='category-content'>
-                        <AccordionItem key={categoryID} value={categoryName + "-" + categoryID.toString()}>
-                            <AccordionTrigger>{categoryName}</AccordionTrigger>
-                                <AccordionContent className="flex flex-col gap-4 text-balance">
-                                    <Table>
-                                        <TableBody>
-                                            {Array.from(wordBank.get(categoryID) ?? []).map(([wordID, wordPhrase]) => (
-                                                <TableRow key={wordID.toString()}>
-                                                    <TableCell>{wordPhrase}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </AccordionContent>
-                        </AccordionItem>
-                    </div>
+                    <AccordionItem className="border-0 border-black mb-4" key={categoryID} value={categoryName + "-" + categoryID.toString()}>
+                        <AccordionTrigger className="text-2xl bg-primary rounded-t-lg p-2 text-primary-foreground">{categoryName}</AccordionTrigger>
+                        <AccordionContent className="p-2 bg-secondary rounded-b-lg">
+                            <Table>
+                                <TableBody>
+                                    {Array.from(wordBank.get(categoryID) ?? []).map(([wordID, wordPhrase]) => (
+                                        <TableRow key={wordID.toString()} className="border-b border-neutral-400">
+                                            <TableCell>{wordPhrase}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </AccordionContent>
+                    </AccordionItem>
                 ))}
             </Accordion>
         </div>
