@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import api from '../api'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion'
 import { Table, TableBody, TableCell, TableRow } from './ui/table'
 import "/src/WordBank.css"
 import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Checkbox } from './ui/checkbox'
 
 interface Category {
     word_category_id: number
@@ -20,6 +22,12 @@ const WordBank = () => {
 
     const [categories, setCategories] = useState<Map<number, string>>(new Map())
     const [wordBank, setWordBank] = useState<Map<number, Map<number, string>>>(new Map())
+    
+    const [countNewInputs, setCountNewInputs] = useState<Map<number, number>>(new Map())
+    const newWordPhrases = useRef<Map<number, HTMLInputElement[]>>(new Map())
+    const [editMode, setEditMode] = useState<boolean>(false)
+
+    let uniqID = -1
 
     useEffect(() => {
         const getCategories = async () => {
@@ -55,6 +63,8 @@ const WordBank = () => {
                     }
 
                     tempMap.get(row.word_category_id)!.set(row.word_id, row.word_phrase)
+                    
+                    uniqID = row.word_id + 1
                 })
 
                 setWordBank(tempMap)
@@ -77,27 +87,80 @@ const WordBank = () => {
             setAccordionDefaults(updatedCategories)
         }
     }, [categories])
+
+    const addNewWordPhrase = async (categoryID: number) => {
+        setCountNewInputs(prev => {
+            const newMap = new Map(prev);
+            newMap.set(categoryID, (newMap.get(categoryID) ?? 0) + 1);
+            return newMap;
+        })
+
+    }
+
+    const registerInputRef = (categoryID: number, index: number, el: HTMLInputElement | null) => {
+        if (!el) return
+
+        const arr = newWordPhrases.current.get(categoryID) || [];
+        arr[index] = el
+        newWordPhrases.current.set(categoryID, arr)
+    }
+
+    const changeEditMode = () => {
+        if (editMode) {
+            const result = new Map<number, string[]>()
+
+            newWordPhrases.current.forEach((inputs, categoryID) => {
+                result.set(categoryID, inputs.map(input => input.value))
+            })
+
+            console.log(result)
+
+            newWordPhrases.current.clear()
+        }
+        setEditMode(!editMode)
+    }
     
 
     return (
         
         <div>
-            <Button className="bg-orange-600 hover:bg-orange-500 mb-4">Edit</Button>
+            
+            <Button key={"edit-wordbank"} className="mb-4" onClick={changeEditMode}>
+                {editMode ? "Save changes" : "Edit"}
+            </Button>
 
             <Accordion type="multiple" value={accordionDefaults} onValueChange={(v) => setAccordionDefaults(v)} >
                 {Array.from(categories).map(([categoryID, categoryName]) => (
-                    <AccordionItem className="border-0 border-black mb-4" key={categoryID} value={categoryName + "-" + categoryID.toString()}>
-                        <AccordionTrigger className="text-2xl bg-primary rounded-t-lg p-2 text-primary-foreground">{categoryName}</AccordionTrigger>
-                        <AccordionContent className="p-2 bg-secondary rounded-b-lg">
-                            <Table>
-                                <TableBody>
+                    <AccordionItem key={"item-" + categoryID.toString()} className="border-0 border-black mb-4" value={categoryName + "-" + categoryID.toString()}>
+                        <AccordionTrigger key={"category-" + categoryID.toString()} className="text-2xl bg-primary rounded-t-lg p-2 text-primary-foreground">{categoryName}</AccordionTrigger>
+                        <AccordionContent key={"category-content-" + categoryID.toString()} className="p-2 bg-secondary rounded-b-lg">
+                            <Table key={"table-" + categoryID.toString()}>
+                                <TableBody key={"tablebody-" + categoryID.toString()}>
                                     {Array.from(wordBank.get(categoryID) ?? []).map(([wordID, wordPhrase]) => (
-                                        <TableRow key={wordID.toString()} className="border-b border-neutral-400">
-                                            <TableCell>{wordPhrase}</TableCell>
+                                        <TableRow key={"existing-row-" + wordID.toString()} className="border-b border-neutral-400">
+                                            <TableCell key={"existing-cell-1-" + wordID.toString()}>
+                                                {editMode ? <span id={"existing-span-" + wordID.toString()} className="flex gap-2 items-center"> 
+                                                    <Checkbox id={"existing-cb-" + categoryID.toString() + wordID.toString()} className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"/>
+                                                    <Input id={"existing-input-" + categoryID.toString() + wordID.toString()} defaultValue={wordPhrase}/> </span> : wordPhrase
+                                                }
+                                                
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+
+                                    {Array.from({ length: countNewInputs.get(categoryID) ?? 0 }).map((_, index) => (
+                                        <TableRow key={"new-row-" + index.toString()} className="border-b border-neutral-400">
+                                            <TableCell key={"new-cell-1-" + index.toString()}>
+                                                <span id={"new-span-" + index.toString()} className="flex gap-2 items-center"> 
+                                                    <Checkbox id={"new-cb-" + categoryID.toString() + index.toString()} className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"/>
+                                                    <Input id={"new-input-" + categoryID.toString() + index.toString()} placeholder="Enter word/phrase here... " ref={e => registerInputRef(categoryID, index, e)}/> 
+                                                </span>
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
+                            {editMode && <Button key={"add-new-" + categoryID.toString()} className="w-full bg-green-700" onClick={() => addNewWordPhrase(categoryID)}>Add</Button>}
                         </AccordionContent>
                     </AccordionItem>
                 ))}
