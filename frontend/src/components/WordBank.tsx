@@ -20,14 +20,16 @@ interface WordPhrase {
 
 const WordBank = () => {
 
+    const [manualRendersCount, setManualRendersCount] = useState<number>(0)
+
     const [categories, setCategories] = useState<Map<number, string>>(new Map())
     const [wordBank, setWordBank] = useState<Map<number, Map<number, string>>>(new Map())
     
-    const [countNewInputs, setCountNewInputs] = useState<Map<number, number>>(new Map())
-    const newWordPhrases = useRef<Map<number, HTMLInputElement[]>>(new Map())
+    const newWordPhrases = useRef<Map<number, string[]>>(new Map())
+    const existingWordPhrases = useRef<Map<number, Map<Number, string>>>(new Map())
+
     const [editMode, setEditMode] = useState<boolean>(false)
 
-    let uniqID = -1
 
     useEffect(() => {
         const getCategories = async () => {
@@ -64,7 +66,6 @@ const WordBank = () => {
 
                     tempMap.get(row.word_category_id)!.set(row.word_id, row.word_phrase)
                     
-                    uniqID = row.word_id + 1
                 })
 
                 setWordBank(tempMap)
@@ -89,33 +90,33 @@ const WordBank = () => {
     }, [categories])
 
     const addNewWordPhrase = async (categoryID: number) => {
-        setCountNewInputs(prev => {
-            const newMap = new Map(prev);
-            newMap.set(categoryID, (newMap.get(categoryID) ?? 0) + 1);
-            return newMap;
-        })
+
+        if (!newWordPhrases.current.has(categoryID)) {
+            newWordPhrases.current.set(categoryID, [])
+        }
+
+        newWordPhrases.current.get(categoryID)?.push("")
+
+        setManualRendersCount(manualRendersCount + 1)
 
     }
 
-    const registerInputRef = (categoryID: number, index: number, el: HTMLInputElement | null) => {
-        if (!el) return
+    const changeNewWordPhrase = (categoryID: number, index: number, newValue: string) => {
+        newWordPhrases.current.get(categoryID)![index] = newValue
+    }
 
-        const arr = newWordPhrases.current.get(categoryID) || [];
-        arr[index] = el
-        newWordPhrases.current.set(categoryID, arr)
+    const changeExisitingWordPhrase = (categoryID: number, wordID: number, newValue: string) => {
+        if (!existingWordPhrases.current.has(categoryID)) {
+            existingWordPhrases.current.set(categoryID, new Map<number, string>())
+        }
+
+        existingWordPhrases.current.get(categoryID)?.set(wordID, newValue)
     }
 
     const changeEditMode = () => {
         if (editMode) {
-            const result = new Map<number, string[]>()
-
-            newWordPhrases.current.forEach((inputs, categoryID) => {
-                result.set(categoryID, inputs.map(input => input.value))
-            })
-
-            console.log(result)
-
-            newWordPhrases.current.clear()
+            console.log(existingWordPhrases.current)
+            console.log(newWordPhrases.current)
         }
         setEditMode(!editMode)
     }
@@ -141,19 +142,19 @@ const WordBank = () => {
                                             <TableCell key={"existing-cell-1-" + wordID.toString()}>
                                                 {editMode ? <span id={"existing-span-" + wordID.toString()} className="flex gap-2 items-center"> 
                                                     <Checkbox id={"existing-cb-" + categoryID.toString() + wordID.toString()} className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"/>
-                                                    <Input id={"existing-input-" + categoryID.toString() + wordID.toString()} defaultValue={wordPhrase}/> </span> : wordPhrase
+                                                    <Input id={"existing-input-" + categoryID.toString() + wordID.toString()} defaultValue={wordPhrase} onChange={(e) => changeExisitingWordPhrase(categoryID, wordID, e.target.value)}/> </span> : wordPhrase
                                                 }
                                                 
                                             </TableCell>
                                         </TableRow>
                                     ))}
 
-                                    {Array.from({ length: countNewInputs.get(categoryID) ?? 0 }).map((_, index) => (
+                                    {Array.from(newWordPhrases.current.get(categoryID) || []).map((newWordPhrase, index) => (
                                         <TableRow key={"new-row-" + index.toString()} className="border-b border-neutral-400">
                                             <TableCell key={"new-cell-1-" + index.toString()}>
                                                 <span id={"new-span-" + index.toString()} className="flex gap-2 items-center"> 
                                                     <Checkbox id={"new-cb-" + categoryID.toString() + index.toString()} className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"/>
-                                                    <Input id={"new-input-" + categoryID.toString() + index.toString()} placeholder="Enter word/phrase here... " ref={e => registerInputRef(categoryID, index, e)}/> 
+                                                    <Input id={"new-input-" + categoryID.toString() + index.toString()} placeholder="Enter word/phrase here... " defaultValue={newWordPhrase} onChange={e => changeNewWordPhrase(categoryID, index, e.target.value)}/> 
                                                 </span>
                                             </TableCell>
                                         </TableRow>
