@@ -67,7 +67,8 @@ async def new_user_word(new_word_phrase: WordPhrase, request: Request):
 
             if result:
                 return {
-                    "message": f"New word added for user with id {user["user_id"]}"
+                    "message": f"New word added for user with id {user["user_id"]}",
+                    "new_data" : result.data[0]
                 }
 
             return {
