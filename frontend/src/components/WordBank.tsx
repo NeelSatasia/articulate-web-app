@@ -25,11 +25,18 @@ const WordBank = () => {
     const categories = useRef<Map<number, string>>(new Map())
     const wordBank = useRef<Map<number, Map<number, string>>>(new Map())
     
+    const newCategoriesAndWordPhrases = useRef<Map<string, Set<string>>>(new Map())
     const newWordPhrases = useRef<Map<number, string[]>>(new Map())
-    const existingWordPhrases = useRef<Map<number, Map<number, string>>>(new Map())
+
+    const modifyExistingWordPhrases = useRef<Map<number, Map<number, string>>>(new Map())
+
+    const deleteExistingCategories = useRef<Set<number>>(new Set())
     const deleteExistingWordPhrases = useRef<Map<number, Set<number>>>(new Map())
 
     const [editMode, setEditMode] = useState<boolean>(false)
+    const [addNewCategoryMode, setAddNewCategoryMode] = useState<boolean>(false)
+
+    const newCategory = useRef<string>("")
 
     const [accordionDefaults, setAccordionDefaults] = useState<string[]>([])
 
@@ -60,7 +67,7 @@ const WordBank = () => {
     useEffect(() => {
         const getWordBank = async () => {
             try {
-                const resp = await api.get('/wordbank')
+                const resp = await api.get('/wordbank/')
 
                 resp.data.forEach((row: WordPhrase) => {
                     
@@ -100,6 +107,11 @@ const WordBank = () => {
 
     const deleteNewWordPhrase = (categoryID: number, index: number) => {
         newWordPhrases.current.get(categoryID)?.splice(index, 1)
+
+        if (newWordPhrases.current.get(categoryID)?.length == 0) {
+            newWordPhrases.current.delete(categoryID)
+        }
+
         setManualRendersCount(manualRendersCount + 1)
     }
 
@@ -112,48 +124,134 @@ const WordBank = () => {
     }
 
     const changeExisitingWordPhrase = (categoryID: number, wordID: number, newValue: string) => {
-        if (!existingWordPhrases.current.has(categoryID)) {
-            existingWordPhrases.current.set(categoryID, new Map<number, string>())
+        if (!modifyExistingWordPhrases.current.has(categoryID)) {
+            modifyExistingWordPhrases.current.set(categoryID, new Map<number, string>())
         }
 
-        existingWordPhrases.current.get(categoryID)?.set(wordID, newValue)
+        modifyExistingWordPhrases.current.get(categoryID)?.set(wordID, newValue)
     }
 
-    const changeEditMode = () => {
+    const changeCategoryMode = () => {
+        if (addNewCategoryMode) {
+            categories.current.forEach((categoryName: string, _) => {
+                if (categoryName === newCategory.current) {
+                    return
+                }
+            })
+
+            newCategoriesAndWordPhrases.current.set(newCategory.current, new Set<string>())
+        }
+
+        setAddNewCategoryMode(!addNewCategoryMode)
+    }
+
+    const changeEditMode = async () => {
         if (editMode) {
-            
+            if (deleteExistingCategories.current.size > 0) {
+                deleteExistingCategories.current.forEach((categoryID: number) => {
+                    wordBank.current.delete(categoryID)
+                    deleteExistingWordPhrases.current.delete(categoryID)
+                    modifyExistingWordPhrases.current.delete(categoryID)
+                })
+
+                const jsonData = Array.from(deleteExistingCategories.current)
+
+                try {
+                    await api.delete('/wordbank/categories', {data: jsonData})
+
+                } catch (error) {
+                    console.error("Error deleting requested categories", error)
+                }
+            }
+
             if (deleteExistingWordPhrases.current.size > 0) {
                 deleteExistingWordPhrases.current.forEach((wordIDs: Set<number>, categoryID: number) => {
                     for (const wordID of wordIDs) {
                         wordBank.current.get(categoryID)?.delete(wordID)
-                        if (existingWordPhrases.current.has(categoryID)) {
-                            existingWordPhrases.current.get(categoryID)?.delete(wordID)
+                        if (modifyExistingWordPhrases.current.has(categoryID)) {
+                            modifyExistingWordPhrases.current.get(categoryID)?.delete(wordID)
+                            if (modifyExistingWordPhrases.current.get(categoryID)?.size == 0) {
+                                modifyExistingWordPhrases.current.delete(categoryID)
+                            }
                         }
                     }
                 })
+
+                const jsonData: number[] = []
+
+                deleteExistingWordPhrases.current.forEach((wordIDs: Set<number>, _) => {
+                    wordIDs.forEach((wordID) => {
+                        jsonData.push(wordID)
+                    })
+                })
+
+                try {
+                    await api.delete('/wordbank/word-phrases', {data: jsonData})
+
+                } catch (error) {
+                    console.error("Error deleting requested word-phrases", error)
+                }
             }
 
-            existingWordPhrases.current.forEach((wordPhrases: Map<number, string>, categoryID: number) => {
-                wordPhrases.forEach((modifiedWordPhrase: string, wordID: number) => {
-                    wordBank.current.get(categoryID)?.set(wordID, modifiedWordPhrase)
+            if (modifyExistingWordPhrases.current.size > 0) {
+                modifyExistingWordPhrases.current.forEach((wordPhrases: Map<number, string>, categoryID: number) => {
+                    wordPhrases.forEach((modifiedWordPhrase: string, wordID: number) => {
+                        wordBank.current.get(categoryID)?.set(wordID, modifiedWordPhrase)
+                    })
                 })
-            })
+
+                const jsonData: Record<number, Record<number, string>> = {}
+
+                modifyExistingWordPhrases.current.forEach((wordPhrases: Map<number, string>, categoryID: number) => {
+                    jsonData[categoryID] = {}
+
+                    wordPhrases.forEach((modifiedWordPhrase: string, wordID: number) => {
+                        jsonData[categoryID][wordID] = modifiedWordPhrase
+                    })
+                })
+
+                try {
+                    await api.put('/wordbank/word-phrases', jsonData)
+
+                } catch (error) {
+                    console.error("Error deleting requested word-phrases", error)
+                }
+            }
             
             if (newWordPhrases.current.size > 0) {
+                
+                const jsonData: Record<number, string[]> = {}
+
                 newWordPhrases.current.forEach((wordPhrases: string[], categoryID: number) => {
-                    //TODO
+                    jsonData[categoryID] = wordPhrases
                 })
+
+                try {
+                    const resp = await api.put('/wordbank/word-phrases', jsonData)
+
+                    resp.data.forEach((row: WordPhrase) => {
+                        wordBank.current.get(row.word_category_id)!.set(row.word_id, row.word_phrase)
+                    })
+
+                } catch (error) {
+                    console.error("Error deleting requested word-phrases", error)
+                }
             }
 
 
         }
+
         setEditMode(!editMode)
     }
 
     const cancelChanges = () => {
-        existingWordPhrases.current.clear()
+        modifyExistingWordPhrases.current.clear()
         newWordPhrases.current.clear()
         deleteExistingWordPhrases.current.clear()
+
+        if (addNewCategoryMode) {
+            setAddNewCategoryMode(false)
+        }
 
         setEditMode(false)
     }
@@ -165,11 +263,16 @@ const WordBank = () => {
             
             <div className="mb-4">
                 <Button key="edit-wordbank" className="mr-2" onClick={changeEditMode}>
-                    {editMode ? "Save changes": "Edit"}
+                    {editMode ? "Save changes" : "Edit"}
                 </Button>
                 
                 {editMode && <Button key="cancel-changes" className="bg-red-600 hover:bg-red-500 mr-4" onClick={cancelChanges}>Cancel</Button>}
-                {editMode && <Button key="add-category" className="bg-green-600 hover:bg-green-500">Add Category</Button>}
+                {addNewCategoryMode && <Input id="new-category-name" defaultValue={newCategory.current} onChange={(e) => newCategory.current = e.target.value}/>}
+                {editMode && 
+                    <Button key="add-category" className="bg-green-600 hover:bg-green-500" onClick={changeCategoryMode}>
+                        {addNewCategoryMode ? "Add" : "New Category"}
+                    </Button>
+                }
 
             </div>
 
