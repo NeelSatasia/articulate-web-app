@@ -102,17 +102,25 @@ async def new_user_word(new_data: Dict[int, List[str]], request: Request):
     }
     
 
-@router.post("/category")
-async def new_user_word_cateogory(new_word_category: str, request: Request):
+@router.post("/categories")
+async def new_user_word_cateogory(new_word_categories: List[str], request: Request):
     user = request.session.get('user')
     
     if user:
         try:
-            result = supabase.table("word_category").insert({
-                "user_id": user["user_id"],
-                "word_category": new_word_category
-            }).execute()
+            inserted_data = []
 
+            for new_word_category in new_word_categories:
+                resp = supabase.table("word_category").insert({
+                    "user_id": user["user_id"],
+                    "word_category": new_word_category
+                }).execute()
+
+                if resp:
+                    inserted_data.append(resp.data[0])
+
+            return inserted_data
+            '''
             if result:
                 return {
                     "message": f"New word category added for user with id {user["user_id"]}"
@@ -121,6 +129,7 @@ async def new_user_word_cateogory(new_word_category: str, request: Request):
             return {
                 "error": f"Failed to add a new category for user id {user["user_id"]}!"
             }
+            '''
         
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
