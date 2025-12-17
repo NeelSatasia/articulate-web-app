@@ -25,7 +25,6 @@ const WordBank = () => {
     const categories = useRef<Map<number, string>>(new Map())
     const wordBank = useRef<Map<number, Map<number, string>>>(new Map())
     
-    const newCategoriesAndWordPhrases = useRef<Map<string, Set<string>>>(new Map())
     const newWordPhrases = useRef<Map<number, string[]>>(new Map())
 
     const modifyExistingWordPhrases = useRef<Map<number, Map<number, string>>>(new Map())
@@ -37,9 +36,10 @@ const WordBank = () => {
     const [addNewCategoryMode, setAddNewCategoryMode] = useState<boolean>(false)
 
     const newCategory = useRef<string>("")
+    const newCategoryKey = useRef<number>(-1)
+    const keysOfNewCategories = useRef<Map<string, number>>(new Map())
 
     const [accordionDefaults, setAccordionDefaults] = useState<string[]>([])
-
 
     useEffect(() => {
         const getCategories = async () => {
@@ -133,19 +133,51 @@ const WordBank = () => {
 
     const changeCategoryMode = () => {
         if (addNewCategoryMode) {
-            categories.current.forEach((categoryName: string, _) => {
+            for (const categoryName of categories.current.values()) {
                 if (categoryName === newCategory.current) {
                     return
                 }
-            })
+            }
 
-            newCategoriesAndWordPhrases.current.set(newCategory.current, new Set<string>())
+            categories.current.set(newCategoryKey.current, newCategory.current)
+            newWordPhrases.current.set(newCategoryKey.current, [])
+
+            keysOfNewCategories.current.set(newCategory.current, newCategoryKey.current)
+
+            newCategoryKey.current -= 1
+            newCategory.current = ""
         }
 
         setAddNewCategoryMode(!addNewCategoryMode)
     }
 
+    const addExisitingCategoryToDelete = (categoryID: number, newVal: boolean) => {
+        if (newVal) {
+            deleteExistingCategories.current.add(categoryID)
+        } else {
+            deleteExistingCategories.current.delete(categoryID)
+        }
+    }
+
+    const changeCategoryName = (categoryID: number, categoryName: string) => {
+        if (categoryID < 0) {
+            keysOfNewCategories.current.delete(categories.current.get(categoryID)!)
+
+            categories.current.set(categoryID, categoryName)
+            keysOfNewCategories.current.set(categoryName, categoryID)
+        } else {
+            //TODO
+        }
+    }
+
+    const deleteNewCategory = (categoryID: number, categoryName: string) => {
+        newWordPhrases.current.delete(categoryID)
+        categories.current.delete(categoryID)
+        keysOfNewCategories.current.delete(categoryName)
+    }
+
     const changeEditMode = async () => {
+
         if (editMode) {
             if (deleteExistingCategories.current.size > 0) {
                 deleteExistingCategories.current.forEach((categoryID: number) => {
@@ -214,12 +246,33 @@ const WordBank = () => {
                     await api.put('/wordbank/word-phrases', jsonData)
 
                 } catch (error) {
-                    console.error("Error deleting requested word-phrases", error)
+                    console.error("Error modifying requested word-phrases", error)
+                }
+            }
+
+            if (keysOfNewCategories.current.size > 0) {
+
+                const newCategories = Array.from(keysOfNewCategories.current.keys())
+
+                try {
+                    
+                    const resp1 = await api.post('/wordbank/categories', newCategories)
+
+                    resp1.data.forEach((row: Category) => {
+                        const newCategoryWordPhrases = newWordPhrases.current.get(keysOfNewCategories.current.get(row.word_category)!) || []
+                        
+                        newWordPhrases.current.delete(keysOfNewCategories.current.get(row.word_category)!)
+
+                        newWordPhrases.current.set(row.word_category_id, newCategoryWordPhrases)
+                    })
+
+                } catch (error) {
+                    console.error("Error adding new requested word-categories", error)
                 }
             }
             
             if (newWordPhrases.current.size > 0) {
-                
+
                 const jsonData: Record<number, string[]> = {}
 
                 newWordPhrases.current.forEach((wordPhrases: string[], categoryID: number) => {
@@ -227,33 +280,41 @@ const WordBank = () => {
                 })
 
                 try {
-                    const resp = await api.put('/wordbank/word-phrases', jsonData)
+                    const resp2 = await api.post('/wordbank/word-phrases', jsonData)
 
-                    resp.data.forEach((row: WordPhrase) => {
+                    resp2.data.forEach((row: WordPhrase) => {
                         wordBank.current.get(row.word_category_id)!.set(row.word_id, row.word_phrase)
                     })
 
                 } catch (error) {
-                    console.error("Error deleting requested word-phrases", error)
+                    console.error("Error adding newly requested word-phrases", error)
                 }
             }
-
+            
+            clearTempData()
 
         }
 
         setEditMode(!editMode)
+
     }
 
     const cancelChanges = () => {
-        modifyExistingWordPhrases.current.clear()
-        newWordPhrases.current.clear()
-        deleteExistingWordPhrases.current.clear()
+
+        clearTempData()
 
         if (addNewCategoryMode) {
             setAddNewCategoryMode(false)
         }
 
         setEditMode(false)
+    }
+
+    const clearTempData = () => {
+        modifyExistingWordPhrases.current.clear()
+        newWordPhrases.current.clear()
+        deleteExistingWordPhrases.current.clear()
+        keysOfNewCategories.current.clear()
     }
     
 
@@ -279,7 +340,17 @@ const WordBank = () => {
             <Accordion type="multiple" value={accordionDefaults} onValueChange={(v) => setAccordionDefaults(v)} >
                 {Array.from(categories.current).map(([categoryID, categoryName]) => (
                     <AccordionItem key={"item-" + categoryID.toString()} className="border-0 border-black mb-4" value={categoryName + "-" + categoryID.toString()}>
-                        <AccordionTrigger key={"category-" + categoryID.toString()} className="text-2xl bg-primary rounded-t-lg p-2 text-primary-foreground">{categoryName}</AccordionTrigger>
+                        <AccordionTrigger key={"existing-category-" + categoryID.toString()} className="text-2xl bg-primary rounded-t-lg p-2 text-primary-foreground">
+                            {editMode && 
+                                <>
+                                    {categoryID < 0 ? 
+                                        <Button key={"new-category" + categoryID.toString()} className="bg-red-600 hover:bg-red-500" onClick={() => deleteNewCategory(categoryID, categoryName)}>Delete</Button> :
+                                        <Checkbox id={"existing-category-cb-" + categoryID.toString()} className="data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onChange={(val) => addExisitingCategoryToDelete(categoryID, Boolean(val))} />
+                                    }
+                                    <Input id={"existing-category-" + categoryID.toString()} defaultValue={categoryName} onChange={(e) => changeCategoryName(categoryID, e.target.value)}/>
+                                </>
+                            }
+                        </AccordionTrigger>
                         <AccordionContent key={"category-content-" + categoryID.toString()} className="p-2 bg-secondary rounded-b-lg">
                             <Table key={"table-" + categoryID.toString()}>
                                 <TableBody key={"tablebody-" + categoryID.toString()}>
