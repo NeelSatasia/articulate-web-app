@@ -11,7 +11,7 @@ load_dotenv()
 
 GOOGLE_CLIENT_ID = os.getenv("CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-REDIRECT_URI = "http://localhost:8000"
+REDIRECT_URI = "http://localhost:5173"
 
 oauth = OAuth()
 oauth.register(
@@ -28,7 +28,6 @@ oauth.register(
 
 @router.get("")
 async def auth(request: Request):
-    # Google redirects back here with a code
     try:
         token = await oauth.google.authorize_access_token(request)
     except Exception as e:
@@ -60,17 +59,15 @@ async def auth(request: Request):
         
         request.session['user'] = session_data
     
-    return RedirectResponse(url=REDIRECT_URI)
+    return RedirectResponse(url=REDIRECT_URI + "/wordbank")
 
 @router.get("/login")
 async def login(request: Request):
-    # Redirect user to Google Auth URL
     redirect_uri = request.url_for('auth')
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
 @router.get("/logout")
 def logout(request: Request):
-    # Clear session
     request.session.pop('user', None)
     return RedirectResponse(url=REDIRECT_URI)
