@@ -7,6 +7,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
 import { Label } from './ui/label'
+import { useNavigate } from "react-router-dom";
 
 interface Category {
     word_category_id: number
@@ -19,7 +20,7 @@ interface WordPhrase {
     word_phrase: string
 }
 
-const WordBank = () => {
+const WordBank = (/*{onUserLogout}: AppCallback*/) => {
 
     const [manualRendersCount, setManualRendersCount] = useState<number>(0)
 
@@ -43,6 +44,8 @@ const WordBank = () => {
 
     const [accordionDefaults, setAccordionDefaults] = useState<string[]>([])
 
+    const navigate = useNavigate();
+
     const updateAccordionDefaults = () => {
         const updatedDefaults = Array.from(categories.current).map(
             ([categoryID, categoryName]) => `${categoryName}-${categoryID}`
@@ -62,7 +65,10 @@ const WordBank = () => {
 
                 updateAccordionDefaults()
 
-            } catch (error) {
+            } catch (error: any) {
+                if (error.response?.status === 401) {
+                    navigate("/")
+                }
                 console.error("Error fetching categories", error)
             }
         }
@@ -87,7 +93,10 @@ const WordBank = () => {
 
                 setManualRendersCount(prev => prev + 1)
 
-            } catch (error) {
+            } catch (error: any) {
+                if (error.response?.status === 401) {
+                    navigate("/")
+                }
                 console.error("Error fetching word bank", error)
             }
         }
@@ -365,6 +374,15 @@ const WordBank = () => {
         deleteExistingCategories.current.clear()
         keysOfNewCategories.current.clear()
     }
+
+    const logoutUser = async () => {
+        try {
+            window.location.href = "http://localhost:8000/auth/logout"
+            
+        } catch(error) {
+            console.error("Error logging user out", error)
+        }
+    }
     
 
     return (
@@ -432,6 +450,8 @@ const WordBank = () => {
                     </AccordionItem>
                 ))}
             </Accordion>
+
+            <Button className="bg-red-700 hover:bg-red-400" onClick={logoutUser}>Logout</Button>
         </div>
     )
 }
