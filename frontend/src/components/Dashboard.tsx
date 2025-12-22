@@ -2,11 +2,11 @@ import { Navigate, useNavigate } from "react-router-dom"
 import { Button } from "./ui/button"
 import { useEffect, useState } from "react"
 import api from "../api"
-import { falseStr, isAuth, trueStr } from "../context"
+import {falseStr, initAuthInLocalStorage, isAuth, setAuthInLocalStorage, trueStr } from "../commons"
+import Loading from "./Loading"
 
 const Dashboard = () => {
 
-    const [checkAuth, setAuth] = useState<boolean>(false)
     const [loading, setLoading] = useState<boolean>(true)
 
     const navigate = useNavigate()
@@ -19,11 +19,8 @@ const Dashboard = () => {
         navigate("/vocabulary")
     }
 
-    if (localStorage.getItem(isAuth) === null) {
-        localStorage.setItem(isAuth, falseStr)
-    }
+    initAuthInLocalStorage()
 
-    
     useEffect(() => {
         const getAuth = async () => {
             if (localStorage.getItem(isAuth) === falseStr){
@@ -31,11 +28,9 @@ const Dashboard = () => {
                     await api.get('/auth/me')
 
                     localStorage.setItem(isAuth, trueStr)
-                    setAuth(true)
 
                 } catch (error: any) {
-                    localStorage.setItem(isAuth, falseStr)
-                    setAuth(false)
+                    setAuthInLocalStorage(error)
                     console.error("Error checking authentication", error)
                 } finally {
                     setLoading(false)
@@ -46,19 +41,30 @@ const Dashboard = () => {
         getAuth()
     }, [])
 
-    if (loading) {
-        return <div>Loading dashboard ...</div>
+    if (localStorage.getItem(isAuth) === falseStr && loading) {
+        return <Loading/>
     }
 
-    if (!checkAuth) {
+    if (localStorage.getItem(isAuth) === falseStr) {
         return <Navigate to={"/"} replace/>
     }
 
+    const logoutUser = async () => {
+        try {
+            localStorage.setItem(isAuth, falseStr)
+            window.location.href = "http://localhost:8000/auth/logout"
+            
+        } catch(error) {
+            console.error("Error logging user out", error)
+        }
+    }
+
     return (
-        <div className="flex items-center">
+        <div className="flex flex-col justify-center items-center gap-y-5">
             <h1>Dashboard</h1>
             <Button key="user-word-bank-btn" onClick={goToWordBank}>Your Word-Bank</Button>
             <Button key="learn-vocab-btn" onClick={goToVocabulary}>Learn Vocabulary</Button>
+            <Button key="logout-btn" className="bg-red-700 hover:bg-red-400" onClick={logoutUser}>Logout</Button>
         </div>
     )
 }
