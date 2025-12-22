@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from database import supabase
 from typing import Dict, List
-from fastapi.responses import RedirectResponse
 
 router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
 
