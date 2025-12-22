@@ -8,9 +8,9 @@ function App() {
 
 
     return (
-    <>
-        <Button onClick={googleSign}>Google Sign In</Button>
-    </>
+        <>
+            <Button onClick={googleSign}>Google Sign In</Button>
+        </>
     )
 }
 
