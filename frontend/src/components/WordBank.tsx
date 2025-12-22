@@ -7,7 +7,8 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
 import { Label } from './ui/label'
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import { isAuth, trueStr } from '../context'
 
 interface Category {
     word_category_id: number
@@ -20,7 +21,7 @@ interface WordPhrase {
     word_phrase: string
 }
 
-const WordBank = (/*{onUserLogout}: AppCallback*/) => {
+const WordBank = () => {
 
     const [manualRendersCount, setManualRendersCount] = useState<number>(0)
 
@@ -45,6 +46,10 @@ const WordBank = (/*{onUserLogout}: AppCallback*/) => {
     const [accordionDefaults, setAccordionDefaults] = useState<string[]>([])
 
     const navigate = useNavigate();
+
+    if (localStorage.getItem(isAuth) === trueStr) {
+        return <Navigate to="/" replace />
+    }
 
     const updateAccordionDefaults = () => {
         const updatedDefaults = Array.from(categories.current).map(
@@ -79,7 +84,7 @@ const WordBank = (/*{onUserLogout}: AppCallback*/) => {
     useEffect(() => {
         const getWordBank = async () => {
             try {
-                const resp = await api.get('/wordbank/')
+                const resp = await api.get('/wordbank/', {withCredentials: true})
 
                 resp.data.forEach((row: WordPhrase) => {
                     
