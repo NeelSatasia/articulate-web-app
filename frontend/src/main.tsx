@@ -4,10 +4,14 @@ import './index.css'
 import App from './App.tsx'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import WordBank from './components/WordBank.tsx'
+import Dashboard from './components/Dashboard.tsx'
+import Vocabulary from './components/Vocabulary.tsx'
 
 const router = createBrowserRouter([
     {path:"/", element: <App/>},
-    {path:"/wordbank", element: <WordBank/>}
+    {path:"/dashboard", element: <Dashboard/>},
+    {path:"/wordbank", element: <WordBank/>},
+    {path:"/vocabulary", element: <Vocabulary/>}
 ])
 
 createRoot(document.getElementById('root')!).render(
