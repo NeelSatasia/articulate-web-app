@@ -1,3 +1,4 @@
+from http.client import HTTPException
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuth
@@ -59,7 +60,7 @@ async def auth(request: Request):
         
         request.session['user'] = session_data
     
-    return RedirectResponse(url=REDIRECT_URI + "/wordbank")
+    return RedirectResponse(url=REDIRECT_URI + "/dashboard")
 
 @router.get("/login")
 async def login(request: Request):
@@ -71,3 +72,12 @@ async def login(request: Request):
 def logout(request: Request):
     request.session.pop('user', None)
     return RedirectResponse(url=REDIRECT_URI)
+
+@router.get("/me")
+def checkAuth(request: Request):
+    user = request.session.get('user')
+
+    if user:
+        return { "message": "Authenticated" }
+
+    raise HTTPException(status_code=401, detail="Not authenticated")
