@@ -1,5 +1,4 @@
-from http.client import HTTPException
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from authlib.integrations.starlette_client import OAuth
 from database import supabase
