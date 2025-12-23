@@ -1,10 +1,10 @@
 import { Spinner } from "./ui/spinner"
 
-const Loading = () => {
+const Loading = ({spinnerAction}: {spinnerAction: string}) => {
   return (
     <div className="flex items-center justify-center h-screen">
-        <h1 className="tracking-wider mr-2">Loading</h1>
         <Spinner/>
+        <h1 className="tracking-wider mr-2">{spinnerAction}</h1>
     </div>
   )
 }
