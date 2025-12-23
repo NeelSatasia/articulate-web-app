@@ -1,6 +1,8 @@
 export const isAuth = "isAuth"
 export const trueStr = "true"
 export const falseStr = "false"
+export const loadingStr = "Loading"
+export const savingStr = "Saving"
 
 export const initAuthInLocalStorage = () => {
     if (localStorage.getItem(isAuth) === null) {
