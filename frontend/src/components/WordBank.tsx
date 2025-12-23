@@ -7,8 +7,9 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
 import { Label } from './ui/label'
-import { Navigate, useNavigate } from "react-router-dom";
-import { isAuth, trueStr } from '../context'
+import { falseStr, initAuthInLocalStorage, isAuth, loadingStr, savingStr, setAuthInLocalStorage, trueStr } from '../commons'
+import Loading from './Loading'
+import { Navigate } from 'react-router-dom'
 
 interface Category {
     word_category_id: number
@@ -45,11 +46,10 @@ const WordBank = () => {
 
     const [accordionDefaults, setAccordionDefaults] = useState<string[]>([])
 
-    const navigate = useNavigate();
+    const [loading, setLoading] = useState<boolean>(true)
+    const [saving, setSaving] = useState<boolean>(false)
 
-    if (localStorage.getItem(isAuth) === trueStr) {
-        return <Navigate to="/" replace />
-    }
+    initAuthInLocalStorage()
 
     const updateAccordionDefaults = () => {
         const updatedDefaults = Array.from(categories.current).map(
@@ -62,18 +62,20 @@ const WordBank = () => {
     useEffect(() => {
         const getCategories = async () => {
             try {
-                const resp = await api.get('/wordbank/categories')
+                if (localStorage.getItem(isAuth) === trueStr) {
+                    const resp = await api.get('/wordbank/categories')
 
-                resp.data.forEach((row: Category) => {
-                    categories.current.set(row.word_category_id, row.word_category)
-                })
+                    resp.data.forEach((row: Category) => {
+                        categories.current.set(row.word_category_id, row.word_category)
+                    })
 
-                updateAccordionDefaults()
+                    localStorage.setItem(isAuth, trueStr)
+
+                    updateAccordionDefaults()
+                }
 
             } catch (error: any) {
-                if (error.response?.status === 401) {
-                    navigate("/")
-                }
+                setAuthInLocalStorage(error)
                 console.error("Error fetching categories", error)
             }
         }
@@ -84,25 +86,29 @@ const WordBank = () => {
     useEffect(() => {
         const getWordBank = async () => {
             try {
-                const resp = await api.get('/wordbank/', {withCredentials: true})
+                if (localStorage.getItem(isAuth) === trueStr) {
+                    const resp = await api.get('/wordbank/', {withCredentials: true})
 
-                resp.data.forEach((row: WordPhrase) => {
-                    
-                    if (!wordBank.current.has(row.word_category_id)) {
-                        wordBank.current.set(row.word_category_id, new Map<number, string>())
-                    }
+                    resp.data.forEach((row: WordPhrase) => {
+                        
+                        if (!wordBank.current.has(row.word_category_id)) {
+                            wordBank.current.set(row.word_category_id, new Map<number, string>())
+                        }
 
-                    wordBank.current.get(row.word_category_id)!.set(row.word_id, row.word_phrase)
-                    
-                })
+                        wordBank.current.get(row.word_category_id)!.set(row.word_id, row.word_phrase)
+                        
+                    })
 
-                setManualRendersCount(prev => prev + 1)
+                    localStorage.setItem(isAuth, trueStr)
+
+                    setManualRendersCount(prev => prev + 1)
+                }
 
             } catch (error: any) {
-                if (error.response?.status === 401) {
-                    navigate("/")
-                }
+                setAuthInLocalStorage(error)
                 console.error("Error fetching word bank", error)
+            } finally {
+                setLoading(false)
             }
         }
 
@@ -155,21 +161,25 @@ const WordBank = () => {
 
     const changeCategoryMode = () => {
         if (addNewCategoryMode) {
+            let isCategoryValid = true
+
             for (const categoryName of categories.current.values()) {
                 if (categoryName === newCategory.current) {
-                    return
+                    isCategoryValid = false
                 }
             }
 
-            categories.current.set(newCategoryKey.current, newCategory.current)
-            newWordPhrases.current.set(newCategoryKey.current, [])
+            if (isCategoryValid) {
+                categories.current.set(newCategoryKey.current, newCategory.current)
+                newWordPhrases.current.set(newCategoryKey.current, [])
 
-            keysOfNewCategories.current.set(newCategory.current, newCategoryKey.current)
+                keysOfNewCategories.current.set(newCategory.current, newCategoryKey.current)
 
-            newCategoryKey.current -= 1
-            newCategory.current = ""
+                newCategoryKey.current -= 1
+                newCategory.current = ""
 
-            updateAccordionDefaults()
+                updateAccordionDefaults()
+            }
         }
 
         setAddNewCategoryMode(!addNewCategoryMode)
@@ -208,7 +218,9 @@ const WordBank = () => {
 
         if (editMode) {
 
-            if (deleteExistingCategories.current.size > 0) {
+            setSaving(true)
+
+            if (localStorage.getItem(isAuth) === trueStr && deleteExistingCategories.current.size > 0) {
                 deleteExistingCategories.current.forEach((categoryID: number) => {
                     wordBank.current.delete(categoryID)
                     categories.current.delete(categoryID)
@@ -222,12 +234,13 @@ const WordBank = () => {
                 try {
                     await api.delete('/wordbank/categories', {data: jsonData})
 
-                } catch (error) {
+                } catch (error: any) {
+                    setAuthInLocalStorage(error)
                     console.error("Error deleting requested categories", error)
                 }
             }
 
-            if (deleteExistingWordPhrases.current.size > 0) {
+            if (localStorage.getItem(isAuth) === trueStr && deleteExistingWordPhrases.current.size > 0) {
                 deleteExistingWordPhrases.current.forEach((wordIDs: Set<number>, categoryID: number) => {
                     for (const wordID of wordIDs) {
                         wordBank.current.get(categoryID)?.delete(wordID)
@@ -252,11 +265,12 @@ const WordBank = () => {
                     await api.delete('/wordbank/word-phrases', {data: jsonData})
 
                 } catch (error) {
+                    setAuthInLocalStorage(error)
                     console.error("Error deleting requested word-phrases", error)
                 }
             }
 
-            if (modifyExistingCategories.current.size > 0) {
+            if (localStorage.getItem(isAuth) === trueStr && modifyExistingCategories.current.size > 0) {
                 const jsonData: Record<number, string> = {}
 
                 let count = 0
@@ -275,12 +289,13 @@ const WordBank = () => {
 
                         updateAccordionDefaults()
                     } catch (error) {
+                        setAuthInLocalStorage(error)
                         console.error("Error modifying requested categories", error)
                     }
                 }
             }
 
-            if (modifyExistingWordPhrases.current.size > 0) {
+            if (localStorage.getItem(isAuth) === trueStr && modifyExistingWordPhrases.current.size > 0) {
                 modifyExistingWordPhrases.current.forEach((wordPhrases: Map<number, string>, categoryID: number) => {
                     wordPhrases.forEach((modifiedWordPhrase: string, wordID: number) => {
                         wordBank.current.get(categoryID)?.set(wordID, modifiedWordPhrase)
@@ -301,11 +316,12 @@ const WordBank = () => {
                     await api.put('/wordbank/word-phrases', jsonData)
 
                 } catch (error) {
+                    setAuthInLocalStorage(error)
                     console.error("Error modifying requested word-phrases", error)
                 }
             }
 
-            if (keysOfNewCategories.current.size > 0) {
+            if (localStorage.getItem(isAuth) === trueStr && keysOfNewCategories.current.size > 0) {
 
                 const newCategories = Array.from(keysOfNewCategories.current.keys())
 
@@ -329,11 +345,12 @@ const WordBank = () => {
                     })
 
                 } catch (error) {
+                    setAuthInLocalStorage(error)
                     console.error("Error adding new requested word-categories", error)
                 }
             }
             
-            if (newWordPhrases.current.size > 0) {
+            if (localStorage.getItem(isAuth) === trueStr && newWordPhrases.current.size > 0) {
 
                 const jsonData: Record<number, string[]> = {}
 
@@ -342,18 +359,20 @@ const WordBank = () => {
                 })
 
                 try {
-                    const resp2 = await api.post('/wordbank/word-phrases', jsonData)
+                    const resp = await api.post('/wordbank/word-phrases', jsonData)
 
-                    resp2.data.forEach((row: WordPhrase) => {
+                    resp.data.forEach((row: WordPhrase) => {
                         wordBank.current.get(row.word_category_id)!.set(row.word_id, row.word_phrase)
                     })
 
                 } catch (error) {
+                    setAuthInLocalStorage(error)
                     console.error("Error adding newly requested word-phrases", error)
                 }
             }
             
             clearTempData()
+            setSaving(false)
 
         }
 
@@ -372,6 +391,18 @@ const WordBank = () => {
         setEditMode(false)
     }
 
+    if (localStorage.getItem(isAuth) === null || localStorage.getItem(isAuth) === falseStr ) {
+        return <Navigate to="/" replace />
+    }
+
+    if (loading) {
+        return <Loading spinnerAction={loadingStr}/>
+    }
+
+    if (saving) {
+        return <Loading spinnerAction={savingStr}/>
+    }
+
     const clearTempData = () => {
         modifyExistingWordPhrases.current.clear()
         newWordPhrases.current.clear()
@@ -382,6 +413,7 @@ const WordBank = () => {
 
     const logoutUser = async () => {
         try {
+            localStorage.setItem(isAuth, falseStr)
             window.location.href = "http://localhost:8000/auth/logout"
             
         } catch(error) {
