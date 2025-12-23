@@ -2,7 +2,7 @@ import { Navigate, useNavigate } from "react-router-dom"
 import { Button } from "./ui/button"
 import { useEffect, useState } from "react"
 import api from "../api"
-import {falseStr, initAuthInLocalStorage, isAuth, setAuthInLocalStorage, trueStr } from "../commons"
+import {falseStr, initAuthInLocalStorage, isAuth, loadingStr, setAuthInLocalStorage, trueStr } from "../commons"
 import Loading from "./Loading"
 
 const Dashboard = () => {
@@ -42,7 +42,7 @@ const Dashboard = () => {
     }, [])
 
     if (localStorage.getItem(isAuth) === falseStr && loading) {
-        return <Loading/>
+        return <Loading spinnerAction={loadingStr}/>
     }
 
     if (localStorage.getItem(isAuth) === falseStr) {
