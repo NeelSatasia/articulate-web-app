@@ -365,6 +365,8 @@ const WordBank = () => {
                         wordBank.current.get(row.word_category_id)!.set(row.word_id, row.word_phrase)
                     })
 
+                    setManualRendersCount(prev => prev + 1)
+
                 } catch (error) {
                     setAuthInLocalStorage(error)
                     console.error("Error adding newly requested word-phrases", error)
