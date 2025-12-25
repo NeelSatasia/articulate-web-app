@@ -1,0 +1,1 @@
+ALTER TABLE word_bank ADD display_status INT DEFAULT 2;
