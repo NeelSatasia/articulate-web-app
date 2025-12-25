@@ -77,6 +77,6 @@ def checkAuth(request: Request):
     user = request.session.get('user')
 
     if user:
-        return { "message": "Authenticated" }
+        return { "message": "Authenticated", "name": user.get("name") }
 
     raise HTTPException(status_code=401, detail="Not authenticated")
