@@ -412,16 +412,6 @@ const WordBank = () => {
         deleteExistingCategories.current.clear()
         keysOfNewCategories.current.clear()
     }
-
-    const logoutUser = async () => {
-        try {
-            localStorage.setItem(isAuth, falseStr)
-            window.location.href = "http://localhost:8000/auth/logout"
-            
-        } catch(error) {
-            console.error("Error logging user out", error)
-        }
-    }
     
 
     return (
@@ -489,8 +479,6 @@ const WordBank = () => {
                     </AccordionItem>
                 ))}
             </Accordion>
-
-            <Button className="bg-red-700 hover:bg-red-400" onClick={logoutUser}>Logout</Button>
         </div>
     )
 }
