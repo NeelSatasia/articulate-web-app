@@ -3,6 +3,7 @@ export const trueStr = "true"
 export const falseStr = "false"
 export const loadingStr = "Loading"
 export const savingStr = "Saving"
+export let userName = "userName"
 
 export const initAuthInLocalStorage = () => {
     if (localStorage.getItem(isAuth) === null) {
