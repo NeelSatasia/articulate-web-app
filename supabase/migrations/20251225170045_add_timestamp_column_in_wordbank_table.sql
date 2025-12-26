@@ -1,0 +1,1 @@
+ALTER TABLE word_bank ADD COLUMN last_updated_at TIMESTAMPTZ DEFAULT now();
