@@ -8,7 +8,7 @@ REDIRECT_URI = "http://localhost:5173"
 
 # GET ---------------------------------------------------------------------------------------------------------------------------------------
 
-@router.get("/")
+@router.get("")
 async def user_word_bank(request: Request):
     user = request.session.get('user')
 
@@ -46,6 +46,23 @@ async def user_word_categories(request: Request):
             "error": f"Failed to fetch word categories for user with id {user["user_id"]}"
         }
     
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@router.get("/dashboard")
+async def current_word_phrases(request: Request):
+    user = request.session.get('user')
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+
+        result = supabase.rpc('get_current_dashboard_word_phrases', { "p_user_id": user["user_id"], "limit_count": 5 }).execute()
+
+        if result:
+            return result.data
+                
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
