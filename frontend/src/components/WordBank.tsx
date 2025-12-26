@@ -7,20 +7,9 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
 import { Label } from './ui/label'
-import { falseStr, initAuthInLocalStorage, isAuth, loadingStr, savingStr, setAuthInLocalStorage, trueStr } from '../commons'
+import { falseStr, initAuthInLocalStorage, isAuth, loadingStr, savingStr, setAuthInLocalStorage, trueStr, type Category, type WordPhrase } from '../commons'
 import Loading from './Loading'
 import { Navigate } from 'react-router-dom'
-
-interface Category {
-    word_category_id: number
-    word_category: string
-}
-
-interface WordPhrase {
-    word_id: number
-    word_category_id: number
-    word_phrase: string
-}
 
 const WordBank = () => {
 
@@ -60,7 +49,7 @@ const WordBank = () => {
     }
 
     useEffect(() => {
-        const getCategories = async () => {
+        const getWordBank = async () => {
             try {
                 if (localStorage.getItem(isAuth) === trueStr) {
                     const resp = await api.get('/wordbank/categories')
@@ -71,25 +60,9 @@ const WordBank = () => {
 
                     localStorage.setItem(isAuth, trueStr)
 
-                    updateAccordionDefaults()
-                }
+                    const resp2 = await api.get('/wordbank')
 
-            } catch (error: any) {
-                setAuthInLocalStorage(error)
-                console.error("Error fetching categories", error)
-            }
-        }
-
-        getCategories()
-    }, [])
-
-    useEffect(() => {
-        const getWordBank = async () => {
-            try {
-                if (localStorage.getItem(isAuth) === trueStr) {
-                    const resp = await api.get('/wordbank/', {withCredentials: true})
-
-                    resp.data.forEach((row: WordPhrase) => {
+                    resp2.data.forEach((row: WordPhrase) => {
                         
                         if (!wordBank.current.has(row.word_category_id)) {
                             wordBank.current.set(row.word_category_id, new Map<number, string>())
@@ -101,12 +74,12 @@ const WordBank = () => {
 
                     localStorage.setItem(isAuth, trueStr)
 
-                    setManualRendersCount(prev => prev + 1)
+                    updateAccordionDefaults()
                 }
 
             } catch (error: any) {
                 setAuthInLocalStorage(error)
-                console.error("Error fetching word bank", error)
+                console.error("Error fetching user word-bank", error)
             } finally {
                 setLoading(false)
             }
