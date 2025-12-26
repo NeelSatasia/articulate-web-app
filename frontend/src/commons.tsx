@@ -16,3 +16,14 @@ export const setAuthInLocalStorage = (error: any) => {
         localStorage.setItem(isAuth, falseStr)
     }
 }
+
+export interface Category {
+    word_category_id: number
+    word_category: string
+}
+
+export interface WordPhrase {
+    word_id: number
+    word_category_id: number
+    word_phrase: string
+}
