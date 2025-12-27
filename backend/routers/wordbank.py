@@ -69,54 +69,47 @@ async def current_word_phrases(request: Request):
 # POST ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.post("/word-phrases")
-async def new_user_word(new_data: Dict[int, List[str]], request: Request):
+async def new_word_phrases(new_data: Dict[int, List[str]], request: Request):
     user = request.session.get('user')
     
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        inserted_data = []
+        rows = []
         
         for word_category_id, word_phrases in new_data.items():
             for word_phrase in word_phrases:
-                resp_data = supabase.table("word_bank").insert({
+                rows.append({
                         "user_id": user["user_id"],
                         "word_category_id": word_category_id,
                         "word_phrase": word_phrase
-                    }).execute()
+                    })
                 
-                if resp_data:
+        if rows:
+            resp_data = supabase.table("word_bank").insert(rows).execute()
 
-                    inserted_data.append(resp_data.data[0])
-
-
-        return inserted_data
+            if resp_data:
+                return resp_data.data
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
 
 @router.post("/categories")
-async def new_user_word_cateogory(new_word_categories: List[str], request: Request):
+async def new_user_word_categories(new_word_categories: List[str], request: Request):
     user = request.session.get('user')
     
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        inserted_data = []
+        result = supabase.table("word_category").insert([
+            {"user_id": user["user_id"], "word_category": category}
+            for category in new_word_categories
+        ]).execute()
 
-        for new_word_category in new_word_categories:
-            resp = supabase.table("word_category").insert({
-                "user_id": user["user_id"],
-                "word_category": new_word_category
-            }).execute()
-
-            if resp:
-                inserted_data.append(resp.data[0])
-
-        return inserted_data
+        return result
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -124,36 +117,58 @@ async def new_user_word_cateogory(new_word_categories: List[str], request: Reque
 # PUT ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.put("/word-phrases")
-async def edit_word_phrase(modified_data: Dict[int, Dict[int, str]], request: Request):
+async def edit_word_phrases(modified_data: Dict[int, Dict[int, str]], request: Request):
     user = request.session.get('user')
     
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
+        word_ids = []
+        category_ids = []
+        phrases = []
+        
         for word_category_id, word_phrases in modified_data.items():
+            cat_id = int(word_category_id)
+            
             for word_id, word_phrase in word_phrases.items():
-                supabase.table("word_bank").update({
-                    "word_phrase": word_phrase,
-                    "word_category_id": word_category_id
-                }).eq("word_id", word_id).eq("user_id", user["user_id"]).execute()
+                word_ids.append(int(word_id))
+                category_ids.append(cat_id)
+                phrases.append(word_phrase)
+
+        supabase.rpc("update_word_phrases", {
+                "p_user_id": user["user_id"],
+                "p_word_ids": word_ids,
+                "p_category_ids": category_ids,
+                "p_phrases": phrases
+            }).execute()
+
+
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
 
 @router.put("/categories")
-async def edit_word_category(modified_data: Dict[int, str], request: Request):
+async def edit_word_categories(modified_data: Dict[int, str], request: Request):
     user = request.session.get('user')
     
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
+        category_ids = []
+        updated_category_names = []
+        
         for word_category_id, new_category_name in modified_data.items():
-            supabase.table("word_category").update({
-                "word_category": new_category_name
-            }).eq("word_category_id", word_category_id).eq("user_id", user["user_id"]).execute()
+            category_ids.append(word_category_id)
+            updated_category_names.append(new_category_name)
+
+        supabase.rpc("update_word_categories", {
+                "p_user_id": user["user_id"],
+                "p_category_ids": category_ids,
+                "p_category_names": updated_category_names
+            }).execute()
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -161,30 +176,28 @@ async def edit_word_category(modified_data: Dict[int, str], request: Request):
 # DELETE ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.delete("/word-phrases")
-async def del_word_phrase(delete_data: List[int], request: Request):
+async def del_word_phrases(delete_data: List[int], request: Request):
     user = request.session.get('user')
     
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        for word_phrase_id in delete_data:
-            supabase.table("word_bank").delete().eq("word_id", word_phrase_id).eq("user_id", user["user_id"]).execute()
+        supabase.table("word_bank").delete().in_("word_id", delete_data).eq("user_id", user["user_id"]).execute()
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
     
 @router.delete("/categories")
-async def del_word_category(word_category_ids: List[int], request: Request):
+async def del_word_categories(word_category_ids: List[int], request: Request):
     user = request.session.get('user')
     
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        for word_category_id in word_category_ids:
-            supabase.table("word_category").delete().eq("word_category_id", word_category_id).eq("user_id", user["user_id"]).execute()
+        supabase.table("word_category").delete().in_("word_category_id", word_category_ids).eq("user_id", user["user_id"]).execute()
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
