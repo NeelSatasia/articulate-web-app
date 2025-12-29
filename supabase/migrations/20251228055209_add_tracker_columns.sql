@@ -1,0 +1,2 @@
+ALTER TABLE word_bank ADD COLUMN vocabulary_level REAL DEFAULT 4.19;
+ALTER TABLE user_vocabulary ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW();
