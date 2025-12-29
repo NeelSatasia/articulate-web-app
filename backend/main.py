@@ -2,7 +2,7 @@ from fastapi import FastAPI
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from routers import users, wordbank, auth
+from routers import users, wordbank, auth, vocabulary
 from dotenv import load_dotenv
 import os
 
@@ -31,6 +31,7 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_SESSION_KEY, https_only=
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(wordbank.router)
+app.include_router(vocabulary.router)
 
 
 if __name__ == "__main__":
