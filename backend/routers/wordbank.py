@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException, Request
 from database import supabase
 from typing import Dict, List
+from fastapi.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
-
-REDIRECT_URI = "http://localhost:5173"
 
 # GET ---------------------------------------------------------------------------------------------------------------------------------------
 
@@ -16,7 +15,7 @@ async def user_word_bank(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        result = supabase.table("word_bank").select("word_id, word_category_id, word_phrase").eq("user_id", user["user_id"]).order("word_category_id").execute()
+        result = await run_in_threadpool(lambda: supabase.table("word_bank").select("word_id, word_category_id, word_phrase").eq("user_id", user["user_id"]).order("word_category_id").execute())
 
         if result:
             return result.data
@@ -37,7 +36,7 @@ async def user_word_categories(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        result = supabase.table("word_category").select("word_category_id, word_category").eq("user_id", user["user_id"]).execute()
+        result = await run_in_threadpool(lambda: supabase.table("word_category").select("word_category_id, word_category").eq("user_id", user["user_id"]).execute())
 
         if result:
             return result.data
@@ -58,7 +57,7 @@ async def current_word_phrases(request: Request):
     
     try:
 
-        result = supabase.rpc('get_current_dashboard_word_phrases', { "p_user_id": user["user_id"], "limit_count": 5 }).execute()
+        result = await run_in_threadpool(lambda: supabase.rpc('get_current_dashboard_word_phrases', { "p_user_id": user["user_id"], "limit_count": 5 }).execute())
 
         if result:
             return result.data
@@ -87,7 +86,7 @@ async def new_word_phrases(new_data: Dict[int, List[str]], request: Request):
                     })
                 
         if rows:
-            resp_data = supabase.table("word_bank").insert(rows).execute()
+            resp_data = await run_in_threadpool(lambda: supabase.table("word_bank").insert(rows).execute())
 
             if resp_data:
                 return resp_data.data
@@ -104,10 +103,10 @@ async def new_user_word_categories(new_word_categories: List[str], request: Requ
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        result = supabase.table("word_category").insert([
+        result = await run_in_threadpool(lambda: supabase.table("word_category").insert([
             {"user_id": user["user_id"], "word_category": category}
             for category in new_word_categories
-        ]).execute()
+        ]).execute())
 
         return result
     
@@ -136,12 +135,12 @@ async def edit_word_phrases(modified_data: Dict[int, Dict[int, str]], request: R
                 category_ids.append(cat_id)
                 phrases.append(word_phrase)
 
-        supabase.rpc("update_word_phrases", {
+        await run_in_threadpool(lambda: supabase.rpc("update_word_phrases", {
                 "p_user_id": user["user_id"],
                 "p_word_ids": word_ids,
                 "p_category_ids": category_ids,
                 "p_phrases": phrases
-            }).execute()
+            }).execute())
 
 
 
@@ -159,17 +158,16 @@ async def edit_word_categories(modified_data: Dict[int, str], request: Request):
     try:
         category_ids = []
         updated_category_names = []
-        
+
         for word_category_id, new_category_name in modified_data.items():
             category_ids.append(word_category_id)
             updated_category_names.append(new_category_name)
 
-        supabase.rpc("update_word_categories", {
+        await run_in_threadpool(lambda: supabase.rpc("update_word_categories", {
                 "p_user_id": user["user_id"],
                 "p_category_ids": category_ids,
                 "p_category_names": updated_category_names
-            }).execute()
-
+            }).execute())
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
@@ -183,7 +181,7 @@ async def del_word_phrases(delete_data: List[int], request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        supabase.table("word_bank").delete().in_("word_id", delete_data).eq("user_id", user["user_id"]).execute()
+        await run_in_threadpool(lambda: supabase.table("word_bank").delete().in_("word_id", delete_data).eq("user_id", user["user_id"]).execute())
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -197,7 +195,7 @@ async def del_word_categories(word_category_ids: List[int], request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        supabase.table("word_category").delete().in_("word_category_id", word_category_ids).eq("user_id", user["user_id"]).execute()
+        await run_in_threadpool(lambda: supabase.table("word_category").delete().in_("word_category_id", word_category_ids).eq("user_id", user["user_id"]).execute())
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
