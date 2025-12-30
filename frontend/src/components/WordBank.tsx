@@ -416,7 +416,7 @@ const WordBank = () => {
                                     <Checkbox id={"existing-category-cb-" + categoryID.toString()} className="border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onCheckedChange={(val) => addExisitingCategoryToDelete(categoryID, Boolean(val))} />
                                 }
                                 <Input id={"existing-category-" + categoryID.toString()} className={`${deleteExistingCategories.current.has(categoryID) ? "border border-red-600 text-red-600" : "border border-gray-400"}`} defaultValue={categoryName} onChange={(e) => changeCategoryName(categoryID, e.target.value)} disabled={deleteExistingCategories.current.has(categoryID)}/>
-                            </div> : <Label className="text-xl mb-2">{categoryName}</Label>
+                            </div> : <Label className="text-3xl mb-2">{categoryName}</Label>
                         }
                         <AccordionTrigger key={"existing-category-" + categoryID.toString()} className="text-2xl bg-primary rounded-t-lg p-2 text-primary-foreground">
                         </AccordionTrigger>
