@@ -27,3 +27,10 @@ export interface WordPhrase {
     word_category_id: number
     word_phrase: string
 }
+
+export interface VocabularyWord {
+    vocab_word_id: number
+    word_id: number
+    word: string
+    definition: string
+}
