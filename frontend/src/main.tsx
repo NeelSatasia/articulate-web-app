@@ -7,6 +7,7 @@ import WordBank from './components/WordBank.tsx'
 import Dashboard from './components/Dashboard.tsx'
 import Vocabulary from './components/Vocabulary.tsx'
 import Layout from './components/Layout.tsx'
+import RewritePhrases from './components/RewritePhrases.tsx'
 
 const router = createBrowserRouter([
   {path: "/", element: <App />},
@@ -15,7 +16,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, path: "dashboard", element: <Dashboard /> },
       { path: "wordbank", element: <WordBank /> },
-      { path: "vocabulary", element: <Vocabulary /> }
+      { path: "vocabulary", element: <Vocabulary /> },
+      { path: "rewritephrases", element: <RewritePhrases /> }
     ]
   }
 ])
