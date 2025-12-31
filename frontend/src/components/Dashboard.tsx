@@ -51,7 +51,7 @@ const Dashboard = () => {
         getAuth()
     }, [])
 
-    if (localStorage.getItem(isAuth) === falseStr && loading) {
+    if (loading) {
         return <Loading spinnerAction={loadingStr}/>
     }
 
