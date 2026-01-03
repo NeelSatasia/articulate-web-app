@@ -17,29 +17,30 @@ const Dashboard = () => {
     useEffect(() => {
         const getAuth = async () => {
             try {
-                const resp = await api.get("/auth/me")
-
-                localStorage.setItem(isAuth, trueStr)
-                localStorage.setItem(userName, resp.data["name"])
                 
-                const resp2 = await api.get("/wordbank/dashboard")
+                if (localStorage.getItem(isAuth) === trueStr) {
+                    const resp2 = await api.get("/wordbank/dashboard")
 
-                const tempData = new Map<number, string>()
+                    const tempData = new Map<number, string>()
 
-                resp2.data.forEach((row: WordPhrase) => {
-                    tempData.set(row.word_id, row.word_phrase)
-                })
+                    resp2.data.forEach((row: WordPhrase) => {
+                        tempData.set(row.word_id, row.word_phrase)
+                    })
 
-                const resp3 = await api.get("/vocabulary/dashboard")
+                    const resp3 = await api.get("/vocabulary/dashboard")
+                    
+                    const tempVocabData = new Map<number, string[]>()
+
+                    resp3.data.forEach((row: VocabularyWord) => {
+                        tempVocabData.set(row.vocab_word_id, [row.word, row.definition])
+                    })
+
+                    localStorage.setItem(isAuth, trueStr)
+                    localStorage.setItem(userName, "User") // TODO: Replace with actual user name from backend
                 
-                const tempVocabData = new Map<number, string[]>()
-
-                resp3.data.forEach((row: VocabularyWord) => {
-                    tempVocabData.set(row.vocab_word_id, [row.word, row.definition])
-                })
-            
-                setWordPhrases(tempData)
-                setNewVocabulary(tempVocabData)
+                    setWordPhrases(tempData)
+                    setNewVocabulary(tempVocabData)
+                }
             } catch (error: any) {
                 setAuthInLocalStorage(error)
                 console.error("Error checking authentication", error)
@@ -61,7 +62,7 @@ const Dashboard = () => {
 
     return (
         <div className="flex flex-col justify-center items-center gap-y-5">
-            <div className="w-full p-2 outline-2 outline-offset outline-primary rounded">
+            <div className="w-full p-2 outline outline-offset outline-primary rounded">
                 <h1 className="text-3xl mb-2">Today's Word Phrases</h1>
                 <Table key="dashboard-word-phrases" className="rounded bg-neutral-100">
                     <TableBody key="word-phrases-content">
@@ -76,7 +77,7 @@ const Dashboard = () => {
                 </Table>
             </div>
 
-            <div className="w-full p-2 outline-2 outline-offset outline-primary rounded">
+            <div className="w-full p-2 outline outline-offset outline-primary rounded">
                 <h1 className="text-3xl mb-2">Today's Vocabulary</h1>
                 <Table key="dashboard-new-vocabulary" className="rounded bg-neutral-100">
                     <TableBody key="new-vocabulary-content">
