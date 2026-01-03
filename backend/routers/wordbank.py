@@ -1,27 +1,28 @@
-from fastapi import APIRouter, HTTPException, Request
-from database import supabase
+from fastapi import APIRouter, HTTPException, Request, Depends
+#from database import supabase
 from typing import Dict, List
 from fastapi.concurrency import run_in_threadpool
+from userclient import get_user_client
 
 router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
 
 # GET ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.get("")
-async def user_word_bank(request: Request):
+async def user_word_bank(request: Request, supabase=Depends(get_user_client)):
     user = request.session.get('user')
 
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
-        result = await run_in_threadpool(lambda: supabase.table("word_bank").select("word_id, word_category_id, word_phrase").eq("user_id", user["user_id"]).order("word_category_id").execute())
+        result = await run_in_threadpool(lambda: supabase.table("word_bank").select("word_id, word_category_id, word_phrase").order("word_category_id").execute())
 
         if result:
             return result.data
         
         return {
-            "error": f"Failed to fetch word bank of user with id {user["user_id"]}!"
+            "error": f"Failed to fetch word bank of user!"
         }
     
     except Exception as e:
@@ -29,35 +30,35 @@ async def user_word_bank(request: Request):
 
    
 @router.get("/categories")
-async def user_word_categories(request: Request):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
+async def user_word_categories(supabase=Depends(get_user_client)):
+    #user = request.session.get('user')
+
+    #if not user:
+        #raise HTTPException(status_code=401, detail="Not authenticated")
+
     try:
-        result = await run_in_threadpool(lambda: supabase.table("word_category").select("word_category_id, word_category").eq("user_id", user["user_id"]).execute())
+        result = await run_in_threadpool(lambda: supabase.table("word_category").select("word_category_id, word_category").execute())
 
         if result:
             return result.data
         
         return {
-            "error": f"Failed to fetch word categories for user with id {user["user_id"]}"
+            "error": f"Failed to fetch word categories for user"
         }
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
 @router.get("/dashboard")
-async def current_word_phrases(request: Request):
-    user = request.session.get('user')
+async def current_word_phrases(supabase=Depends(get_user_client)):
+    #user = request.session.get('user')
 
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    #if not user:
+       #raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
 
-        result = await run_in_threadpool(lambda: supabase.rpc('get_current_dashboard_word_phrases', { "p_user_id": user["user_id"], "limit_count": 5 }).execute())
+        result = await run_in_threadpool(lambda: supabase.rpc('get_current_dashboard_word_phrases', { "limit_count": 5 }).execute())
 
         if result:
             return result.data
@@ -68,19 +69,19 @@ async def current_word_phrases(request: Request):
 # POST ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.post("/word-phrases")
-async def new_word_phrases(new_data: Dict[int, List[str]], request: Request):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
+async def new_word_phrases(request: Request, new_data: Dict[int, List[str]], supabase=Depends(get_user_client)):
+    #user = request.session.get('user')
+
+    #if not user:
+        #raise HTTPException(status_code=401, detail="Not authenticated")
+
     try:
         rows = []
         
         for word_category_id, word_phrases in new_data.items():
             for word_phrase in word_phrases:
                 rows.append({
-                        "user_id": user["user_id"],
+                        "user_id": request.session.get('user')["user_id"],
                         "word_category_id": word_category_id,
                         "word_phrase": word_phrase
                     })
