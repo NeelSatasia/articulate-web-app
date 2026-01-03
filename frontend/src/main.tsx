@@ -14,7 +14,7 @@ const router = createBrowserRouter([
   {path: "/",
     element: <Layout />,
     children: [
-      { index: true, path: "dashboard", element: <Dashboard /> },
+      { path: "dashboard", element: <Dashboard /> },
       { path: "wordbank", element: <WordBank /> },
       { path: "vocabulary", element: <Vocabulary /> },
       { path: "rewritephrases", element: <RewritePhrases /> }
