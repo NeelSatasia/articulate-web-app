@@ -8,7 +8,9 @@ import {
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
-    SidebarMenuItem
+    SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubItem
 } from "@/components/ui/sidebar"
 import { Link } from "react-router-dom"
 import { Button } from "./ui/button"
@@ -59,24 +61,22 @@ const AppSidebar = () => {
 
                             <SidebarMenuItem>
                                 <Collapsible defaultOpen className="group/collapsible">
-                                    <SidebarGroup className="pl-0 pt-0 pb-0">
-                                        <SidebarGroupLabel asChild className="text-sm pl-0">
-                                            <CollapsibleTrigger className="mt-0">
-                                                <SidebarMenuButton>
-                                                Train
-                                                <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                                                </SidebarMenuButton>
-                                            </CollapsibleTrigger>
-                                        </SidebarGroupLabel>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuButton>
+                                            Train
+                                            <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                                        </SidebarMenuButton>
+                                    </CollapsibleTrigger>
 
-                                        <CollapsibleContent className="ml-2">
-                                            <SidebarMenuItem>
-                                                <SidebarMenuButton asChild className="text-sm">
+                                    <CollapsibleContent>
+                                        <SidebarMenuSub>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuButton asChild>
                                                     <Link to="/rewritephrases">Rewrite Phrases</Link>
                                                 </SidebarMenuButton>
-                                            </SidebarMenuItem>
-                                        </CollapsibleContent>
-                                    </SidebarGroup>
+                                            </SidebarMenuSubItem>
+                                        </SidebarMenuSub>
+                                    </CollapsibleContent>
                                 </Collapsible>
                             </SidebarMenuItem>
 
