@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_users_uuid ON public.users(user_uid);
