@@ -1,18 +1,17 @@
 import { Navigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 import api from "../api"
-import {falseStr, initAuthInLocalStorage, isAuth, loadingStr, setAuthInLocalStorage, trueStr, userName, type VocabularyWord, type WordPhrase } from "../commons"
+import {falseStr, isAuth, loadingStr, setAuthInLocalStorage, trueStr, userName, type VocabularyWord, type WordPhrase } from "../commons"
 import Loading from "./Loading"
 import { Table, TableBody, TableCell, TableRow } from "./ui/table"
+import { Button } from "./ui/button"
 
 const Dashboard = () => {
 
     const [loading, setLoading] = useState<boolean>(true)
 
-    initAuthInLocalStorage()
-
     const [wordPhrases, setWordPhrases] = useState<Map<number, string>>(new Map())
-    const [newVocabulary, setNewVocabulary] = useState<Map<number, string[]>>(new Map())
+    const [newVocabulary, setNewVocabulary] = useState<VocabularyWord[]>([])
 
     useEffect(() => {
         const getAuth = async () => {
@@ -28,18 +27,12 @@ const Dashboard = () => {
                     })
 
                     const resp3 = await api.get("/vocabulary/dashboard")
-                    
-                    const tempVocabData = new Map<number, string[]>()
-
-                    resp3.data.forEach((row: VocabularyWord) => {
-                        tempVocabData.set(row.vocab_word_id, [row.word, row.definition])
-                    })
 
                     localStorage.setItem(isAuth, trueStr)
                     localStorage.setItem(userName, "User") // TODO: Replace with actual user name from backend
                 
                     setWordPhrases(tempData)
-                    setNewVocabulary(tempVocabData)
+                    setNewVocabulary(resp3.data)
                 }
             } catch (error: any) {
                 setAuthInLocalStorage(error)
@@ -51,6 +44,17 @@ const Dashboard = () => {
 
         getAuth()
     }, [])
+
+    const addWord = async (new_word_id: number) => {
+        try {
+            setLoading(true)
+            await api.post("/vocabulary/add", { word_id: new_word_id })
+        } catch (error) {
+            console.error("Error adding new vocabulary", error)
+        } finally {
+            setLoading(false)
+        }
+    }
 
     if (loading) {
         return <Loading spinnerAction={loadingStr}/>
@@ -81,13 +85,18 @@ const Dashboard = () => {
                 <h1 className="text-3xl mb-2">Today's Vocabulary</h1>
                 <Table key="dashboard-new-vocabulary" className="rounded bg-neutral-100">
                     <TableBody key="new-vocabulary-content">
-                        {Array.from(newVocabulary).map(([vocabWordID, vocabWord]) => (
-                            <TableRow key={"dashboard-new-vocabulary-row-" + vocabWordID} className="hover:bg-primary hover:text-secondary rounded">
-                                <TableCell key={"dashboard-new-vocabulary-" + vocabWordID} className="rounded-l-md">
-                                    {vocabWord[0]}
+                        {newVocabulary.map(vocabulary => (
+                            <TableRow key={"dashboard-new-vocabulary-row-" + vocabulary.word_id} className="hover:bg-primary hover:text-secondary rounded">
+                                <TableCell key={"dashboard-new-vocabulary-" + vocabulary.word_id} className="rounded-l-md">
+                                    {vocabulary.word}
                                 </TableCell>
-                                <TableCell key={"dashboard-new-vocabulary-definition-" + vocabWordID} className="rounded-r-md">
-                                    {vocabWord[1]}
+                                <TableCell key={"dashboard-new-vocabulary-definition-" + vocabulary.word_id} >
+                                    {vocabulary.definition}
+                                </TableCell>
+                                <TableCell className="rounded-r-md">
+                                    <Button onClick={() => addWord(vocabulary.word_id)} className="bg-green-600 hover:bg-green-500 text-white">
+                                        Add
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}
