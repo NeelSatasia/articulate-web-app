@@ -11,3 +11,6 @@ class WordCategory(BaseModel):
 class WordPhrase(BaseModel):
     word_category_id: int
     word_phrase: str
+
+class VocabularyWordInfo(BaseModel):
+    word_id: int
