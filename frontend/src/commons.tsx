@@ -29,8 +29,8 @@ export interface WordPhrase {
 }
 
 export interface VocabularyWord {
-    vocab_word_id: number
     word_id: number
     word: string
     definition: string
+    frequency_score: number
 }
