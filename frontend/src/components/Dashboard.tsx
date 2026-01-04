@@ -48,7 +48,7 @@ const Dashboard = () => {
     const addWord = async (new_word_id: number) => {
         try {
             setLoading(true)
-            await api.post("/vocabulary/add", { word_id: new_word_id })
+            await api.post("/vocabulary", { word_id: new_word_id })
         } catch (error) {
             console.error("Error adding new vocabulary", error)
         } finally {
