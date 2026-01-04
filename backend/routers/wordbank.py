@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
-#from database import supabase
 from typing import Dict, List
 from fastapi.concurrency import run_in_threadpool
 from userclient import get_user_client
@@ -9,11 +8,7 @@ router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
 # GET ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.get("")
-async def user_word_bank(request: Request, supabase=Depends(get_user_client)):
-    user = request.session.get('user')
-
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+async def user_word_bank(supabase=Depends(get_user_client)):
     
     try:
         result = await run_in_threadpool(lambda: supabase.table("word_bank").select("word_id, word_category_id, word_phrase").order("word_category_id").execute())
@@ -31,10 +26,6 @@ async def user_word_bank(request: Request, supabase=Depends(get_user_client)):
    
 @router.get("/categories")
 async def user_word_categories(supabase=Depends(get_user_client)):
-    #user = request.session.get('user')
-
-    #if not user:
-        #raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
         result = await run_in_threadpool(lambda: supabase.table("word_category").select("word_category_id, word_category").execute())
@@ -49,12 +40,9 @@ async def user_word_categories(supabase=Depends(get_user_client)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
+
 @router.get("/dashboard")
 async def current_word_phrases(supabase=Depends(get_user_client)):
-    #user = request.session.get('user')
-
-    #if not user:
-       #raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
 
@@ -70,10 +58,6 @@ async def current_word_phrases(supabase=Depends(get_user_client)):
 
 @router.post("/word-phrases")
 async def new_word_phrases(request: Request, new_data: Dict[int, List[str]], supabase=Depends(get_user_client)):
-    #user = request.session.get('user')
-
-    #if not user:
-        #raise HTTPException(status_code=401, detail="Not authenticated")
 
     try:
         rows = []
@@ -97,11 +81,8 @@ async def new_word_phrases(request: Request, new_data: Dict[int, List[str]], sup
     
 
 @router.post("/categories")
-async def new_user_word_categories(new_word_categories: List[str], request: Request):
+async def new_user_word_categories(new_word_categories: List[str], request: Request, supabase=Depends(get_user_client)):
     user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
     
     try:
         result = await run_in_threadpool(lambda: supabase.table("word_category").insert([
@@ -109,7 +90,7 @@ async def new_user_word_categories(new_word_categories: List[str], request: Requ
             for category in new_word_categories
         ]).execute())
 
-        return result
+        return result.data
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -117,11 +98,7 @@ async def new_user_word_categories(new_word_categories: List[str], request: Requ
 # PUT ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.put("/word-phrases")
-async def edit_word_phrases(modified_data: Dict[int, Dict[int, str]], request: Request):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+async def edit_word_phrases(modified_data: Dict[int, Dict[int, str]], supabase=Depends(get_user_client)):
     
     try:
         word_ids = []
@@ -137,24 +114,17 @@ async def edit_word_phrases(modified_data: Dict[int, Dict[int, str]], request: R
                 phrases.append(word_phrase)
 
         await run_in_threadpool(lambda: supabase.rpc("update_word_phrases", {
-                "p_user_id": user["user_id"],
                 "p_word_ids": word_ids,
                 "p_category_ids": category_ids,
                 "p_phrases": phrases
             }).execute())
-
-
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
 
 @router.put("/categories")
-async def edit_word_categories(modified_data: Dict[int, str], request: Request):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+async def edit_word_categories(modified_data: Dict[int, str], supabase=Depends(get_user_client)):
     
     try:
         category_ids = []
@@ -165,38 +135,30 @@ async def edit_word_categories(modified_data: Dict[int, str], request: Request):
             updated_category_names.append(new_category_name)
 
         await run_in_threadpool(lambda: supabase.rpc("update_word_categories", {
-                "p_user_id": user["user_id"],
                 "p_category_ids": category_ids,
                 "p_category_names": updated_category_names
             }).execute())
+        
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
 # DELETE ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.delete("/word-phrases")
-async def del_word_phrases(delete_data: List[int], request: Request):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+async def del_word_phrases(delete_data: List[int], supabase=Depends(get_user_client)):
     
     try:
-        await run_in_threadpool(lambda: supabase.table("word_bank").delete().in_("word_id", delete_data).eq("user_id", user["user_id"]).execute())
+        await run_in_threadpool(lambda: supabase.table("word_bank").delete().in_("word_id", delete_data).execute())
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
     
 @router.delete("/categories")
-async def del_word_categories(word_category_ids: List[int], request: Request):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+async def del_word_categories(word_category_ids: List[int], supabase=Depends(get_user_client)):
     
     try:
-        await run_in_threadpool(lambda: supabase.table("word_category").delete().in_("word_category_id", word_category_ids).eq("user_id", user["user_id"]).execute())
-    
+        await run_in_threadpool(lambda: supabase.table("word_category").delete().in_("word_category_id", word_category_ids).execute())
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
