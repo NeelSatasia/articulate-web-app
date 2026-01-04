@@ -2,13 +2,13 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # Load variables from .env
+load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SECRET_KEY = os.getenv("SECRET_KEY")
+ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
-if not all([SUPABASE_URL, SECRET_KEY]):
+if not all([SUPABASE_URL, ANON_KEY]):
     raise EnvironmentError("One or more Supabase environment variables are missing!")
 
 
-supabase: Client = create_client(SUPABASE_URL, SECRET_KEY)
+supabase: Client = create_client(SUPABASE_URL, ANON_KEY)
