@@ -52,17 +52,15 @@ const WordBank = () => {
         const getWordBank = async () => {
             try {
                 if (localStorage.getItem(isAuth) === trueStr) {
-                    const resp = await api.get('/wordbank/categories')
+                    const getCategories = await api.get('/wordbank/categories')
 
-                    resp.data.forEach((row: Category) => {
+                    getCategories.data.forEach((row: Category) => {
                         categories.current.set(row.word_category_id, row.word_category)
                     })
 
-                    localStorage.setItem(isAuth, trueStr)
+                    const getWordBank = await api.get('/wordbank')
 
-                    const resp2 = await api.get('/wordbank')
-
-                    resp2.data.forEach((row: WordPhrase) => {
+                    getWordBank.data.forEach((row: WordPhrase) => {
                         
                         if (!wordBank.current.has(row.word_category_id)) {
                             wordBank.current.set(row.word_category_id, new Map<number, string>())
@@ -300,9 +298,9 @@ const WordBank = () => {
 
                 try {
                     
-                    const resp1 = await api.post('/wordbank/categories', newCategories)
+                    const resp = await api.post('/wordbank/categories', newCategories)
 
-                    resp1.data.forEach((row: Category) => {
+                    resp.data.forEach((row: Category) => {
                         const newCategoryWordPhrases = newWordPhrases.current.get(keysOfNewCategories.current.get(row.word_category)!) || []
                         
                         newWordPhrases.current.delete(keysOfNewCategories.current.get(row.word_category)!)
