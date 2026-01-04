@@ -36,7 +36,7 @@ def callback(request: Request, code: str = None):
         request.session['user'] = {
             "email": user.email,
             "uuid": user.id,
-            "public_id": user_public_id.data[0]["user_id"],
+            "user_id": user_public_id.data[0]["user_id"],
             "access_token": session.session.access_token 
         }
 
