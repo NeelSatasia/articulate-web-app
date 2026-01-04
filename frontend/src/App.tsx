@@ -1,6 +1,10 @@
+import { initAuthInLocalStorage } from "./commons"
 import { Button } from "./components/ui/button"
 
 function App() {
+
+    initAuthInLocalStorage()
+
     const googleSign = () => {
         window.location.href =  "http://localhost:8000/auth/login"
     }
