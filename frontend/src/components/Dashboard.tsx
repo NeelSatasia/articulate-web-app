@@ -16,24 +16,21 @@ const Dashboard = () => {
     useEffect(() => {
         const getAuth = async () => {
             try {
-                
-                if (localStorage.getItem(isAuth) === trueStr) {
-                    const resp2 = await api.get("/wordbank/dashboard")
+                const getCurrentWP = await api.get("/wordbank/dashboard")
 
-                    const tempData = new Map<number, string>()
+                const tempData = new Map<number, string>()
 
-                    resp2.data.forEach((row: WordPhrase) => {
-                        tempData.set(row.word_id, row.word_phrase)
-                    })
+                getCurrentWP.data.forEach((row: WordPhrase) => {
+                    tempData.set(row.word_id, row.word_phrase)
+                })
 
-                    const resp3 = await api.get("/vocabulary/dashboard")
+                const getCurrentVocab = await api.get("/vocabulary/dashboard")
 
-                    localStorage.setItem(isAuth, trueStr)
-                    localStorage.setItem(userName, "User") // TODO: Replace with actual user name from backend
-                
-                    setWordPhrases(tempData)
-                    setNewVocabulary(resp3.data)
-                }
+                localStorage.setItem(isAuth, trueStr)
+                localStorage.setItem(userName, "User") // TODO: Replace with actual user name from backend
+            
+                setWordPhrases(tempData)
+                setNewVocabulary(getCurrentVocab.data)
             } catch (error: any) {
                 setAuthInLocalStorage(error)
                 console.error("Error checking authentication", error)
