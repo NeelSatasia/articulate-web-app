@@ -3,4 +3,5 @@ uvicorn
 pydantic
 supabase
 python-dotenv
-ollama
+openai
+language-tool-python
