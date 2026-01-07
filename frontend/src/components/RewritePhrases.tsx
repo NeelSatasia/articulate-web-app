@@ -7,6 +7,7 @@ import { Spinner } from "./ui/spinner"
 import { Input } from "./ui/input"
 
 interface WordPhraseResponse {
+    phraseID: number
     phrase: string
     generatedSentence: string
     userSentence: string
@@ -26,7 +27,7 @@ const RewritePhrases = () => {
                 const resp = await api.get('/wordbank')
 
                 resp.data.forEach((row: WordPhrase) => {
-                    wordBank.current.push({phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false})
+                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false})
                 })
 
                 localStorage.setItem(isAuth, trueStr)
@@ -61,10 +62,12 @@ const RewritePhrases = () => {
 
         try {
             setLoadingSentence(true)
-            const resp = await api.get('/ai/rewritephrase/' + wordBank.current[currentIndex].phrase)
+            const resp = await api.get('/ai/generate-sentence/' + wordBank.current[currentIndex].phraseID)
             
-            wordBank.current[currentIndex].generatedSentence = resp.data.sentence
-            wordBank.current[currentIndex].isSentenceGenerated = true
+            if (resp.data.sentence) {
+                wordBank.current[currentIndex].generatedSentence = resp.data.sentence
+                wordBank.current[currentIndex].isSentenceGenerated = true
+            }
             
             setLoadingSentence(false)
 
