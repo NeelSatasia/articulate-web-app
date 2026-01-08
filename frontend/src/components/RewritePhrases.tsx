@@ -12,6 +12,8 @@ interface WordPhraseResponse {
     generatedSentence: string
     userSentence: string
     isSentenceGenerated: boolean
+    vectorEmbedID?: number
+    isResponseReviewed: boolean
 }
 
 const RewritePhrases = () => {
@@ -27,8 +29,10 @@ const RewritePhrases = () => {
                 const resp = await api.get('/wordbank')
 
                 resp.data.forEach((row: WordPhrase) => {
-                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false})
+                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false})
                 })
+
+                console.log(wordBank.current)
 
                 localStorage.setItem(isAuth, trueStr)
 
@@ -64,8 +68,9 @@ const RewritePhrases = () => {
             setLoadingSentence(true)
             const resp = await api.get('/ai/generate-sentence/' + wordBank.current[currentIndex].phraseID)
             
-            if (resp.data.sentence) {
+            if (resp.data.sentence && resp.data.new_embed_id) {
                 wordBank.current[currentIndex].generatedSentence = resp.data.sentence
+                wordBank.current[currentIndex].vectorEmbedID = resp.data.new_embed_id
                 wordBank.current[currentIndex].isSentenceGenerated = true
             }
             
@@ -77,20 +82,18 @@ const RewritePhrases = () => {
     }
 
     const submitUserResponse = async () => {
-        if (wordBank.current[currentIndex].userSentence.trim().length === 0) {
+        if (wordBank.current[currentIndex].userSentence.trim().length === 0 || !wordBank.current[currentIndex].vectorEmbedID) {
             return
         }
 
         try {
             setLoadingSentence(true)
+            
+            const resp = await api.get("/ai/review-user-response/" + wordBank.current[currentIndex].userSentence + "/" + wordBank.current[currentIndex].vectorEmbedID)
+            
+            wordBank.current[currentIndex].isResponseReviewed = true
 
-            // Yet to implement backend route for this
-            const resp = await api.post('/ai/reviewsentence', {
-                phrase: wordBank.current[currentIndex].phrase,
-                userSentence: wordBank.current[currentIndex].userSentence
-            })
-
-            wordBank.current[currentIndex].generatedSentence = resp.data.reviewedSentence
+            console.log(resp.data)
 
         } catch (error) {
             console.error("Error reviewing user sentence", error)
@@ -132,7 +135,7 @@ const RewritePhrases = () => {
                         className="w-3/4"
                     />
 
-                    <Button className="bg-teal-600 hover:bg-teal-500" onClick={submitUserResponse}>Review with AI</Button>
+                    <Button className="bg-teal-600 hover:bg-teal-500" onClick={submitUserResponse} disabled={wordBank.current[currentIndex].isResponseReviewed}>Review with AI</Button>
                 </div>}
             </div>
         </div>
