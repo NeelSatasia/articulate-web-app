@@ -5,6 +5,7 @@ import Loading from "./Loading"
 import { Button } from "./ui/button"
 import { Spinner } from "./ui/spinner"
 import { Input } from "./ui/input"
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 
 interface WordPhraseResponse {
     phraseID: number
@@ -14,6 +15,8 @@ interface WordPhraseResponse {
     isSentenceGenerated: boolean
     vectorEmbedID?: number
     isResponseReviewed: boolean
+    similarity: number
+    userResult: string
 }
 
 const RewritePhrases = () => {
@@ -29,7 +32,7 @@ const RewritePhrases = () => {
                 const resp = await api.get('/wordbank')
 
                 resp.data.forEach((row: WordPhrase) => {
-                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false})
+                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false, similarity: 0.0, userResult: ""})
                 })
 
                 console.log(wordBank.current)
@@ -81,7 +84,7 @@ const RewritePhrases = () => {
         }
     }
 
-    const submitUserResponse = async () => {
+    const reviewUserResponse = async () => {
         if (wordBank.current[currentIndex].userSentence.trim().length === 0 || !wordBank.current[currentIndex].vectorEmbedID) {
             return
         }
@@ -90,10 +93,21 @@ const RewritePhrases = () => {
             setLoadingSentence(true)
             
             const resp = await api.get("/ai/review-user-response/" + wordBank.current[currentIndex].userSentence + "/" + wordBank.current[currentIndex].vectorEmbedID)
-            
-            wordBank.current[currentIndex].isResponseReviewed = true
 
-            console.log(resp.data)
+            wordBank.current[currentIndex].isResponseReviewed = true
+            wordBank.current[currentIndex].similarity = Number((resp.data["similarity"] * 100).toFixed(2))
+
+            const similarity = wordBank.current[currentIndex].similarity
+
+            if (similarity >= 80.0 && similarity < 100) {
+                wordBank.current[currentIndex].userResult = "Good job!"
+            } else if (similarity >= 70.0 && similarity < 80.0) {
+                wordBank.current[currentIndex].userResult = "Your sentence is almost matching!"
+            } else if (similarity < 70.0) {
+                wordBank.current[currentIndex].userResult = "Failed to match the sentence!"
+            } else {
+                wordBank.current[currentIndex].userResult = "Your sentence is too similar!"
+            }
 
         } catch (error) {
             console.error("Error reviewing user sentence", error)
@@ -107,10 +121,10 @@ const RewritePhrases = () => {
     }
 
     return (
-        <div className="flex flex-col justify-center w-full">
+        <div className="flex flex-col justify-center w-full bg-neutral-100 rounded-md p-4">
             <div className="flex justify-center mb-10">
-                <Button className="bg-neutral-500 hover:bg-neutral-400" onClick={prevWordPhrase}>Previous</Button>
-                <Button className="bg-green-600 hover:bg-green-500 ml-4" onClick={nextWordPhrase}>Next</Button>
+                <Button className="bg-neutral-400 hover:bg-neutral-400" onClick={prevWordPhrase}>Previous</Button>
+                <Button className="bg-primary ml-4" onClick={nextWordPhrase}>Next</Button>
             </div>
 
             <div className="flex flex-col justify-center items-center">
@@ -122,9 +136,12 @@ const RewritePhrases = () => {
                 {wordBank.current[currentIndex].isSentenceGenerated == false && <Button className="w-fit mb-4" onClick={generateSentence} disabled={wordBank.current[currentIndex].isSentenceGenerated}>Generate Sentence</Button>}
 
                 
-                {loadingSentence ? <Spinner /> : <p>{wordBank.current[currentIndex].generatedSentence}</p>}
+                {loadingSentence && wordBank.current[currentIndex].isSentenceGenerated == false ? 
+                    <Spinner /> : 
+                    <p><b>Generated Sentence: </b>{wordBank.current[currentIndex].generatedSentence}</p>
+                }
 
-                {wordBank.current[currentIndex].isSentenceGenerated && <div className="mt-4 w-full justify-center items-center flex flex-col gap-y-4">
+                {wordBank.current[currentIndex].isSentenceGenerated && <div className="mt-4 w-full justify-center items-center flex flex-col ">
                     <Input
                         type="text"
                         placeholder="Re-phrase the sentence here..."
@@ -133,9 +150,26 @@ const RewritePhrases = () => {
                             wordBank.current[currentIndex].userSentence = e.target.value
                         }}
                         className="w-3/4"
+                        disabled={wordBank.current[currentIndex].isResponseReviewed}
                     />
 
-                    <Button className="bg-teal-600 hover:bg-teal-500" onClick={submitUserResponse} disabled={wordBank.current[currentIndex].isResponseReviewed}>Review with AI</Button>
+                    {loadingSentence && wordBank.current[currentIndex].isResponseReviewed == false ? 
+                        <Spinner /> : 
+                        wordBank.current[currentIndex].isResponseReviewed ?
+                            <Card className="mt-4 bg-neutral-200">
+                                <CardHeader className="justify-center text-2xl">
+                                    <CardTitle>Analysis</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div>
+                                        <p className="mt-2"><b>Rephrase Similarity:</b> {wordBank.current[currentIndex].similarity}%</p>
+                                        <p><b>Feedback:</b> {wordBank.current[currentIndex].userResult}</p>
+                                    </div>
+                                </CardContent>
+                            </Card> :
+                            <Button className="bg-teal-600 hover:bg-teal-500 mt-4" onClick={reviewUserResponse}>Review with AI</Button>
+                    }
+
                 </div>}
             </div>
         </div>
