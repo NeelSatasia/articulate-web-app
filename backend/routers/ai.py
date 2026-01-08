@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
-from language_tool_python import LanguageTool
 from userclient import get_user_client
 
 load_dotenv()
@@ -13,10 +12,10 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 
 # GET ---------------------------------------------------------------------------------------------------------------------------------------
 
-@router.get("/generate-sentence/{phraseID}")
-async def user_rewrite_phrases(phraseID: int, supabase=Depends(get_user_client)):
+@router.get("/generate-sentence/{phrase_id}")
+async def user_rewrite_phrases(phrase_id: int, supabase=Depends(get_user_client)):
     
-    result_phrase = supabase.table("word_bank").select("word_phrase").eq("word_id", phraseID).execute()
+    result_phrase = supabase.table("word_bank").select("word_phrase").eq("word_id", phrase_id).execute()
 
     if (not result_phrase) or len(result_phrase.data) == 0:
         return { "error" : "Invalid" }
@@ -38,14 +37,36 @@ async def user_rewrite_phrases(phraseID: int, supabase=Depends(get_user_client))
                 model="text-embedding-3-small"
             )
 
-            is_similar_sentence = supabase.rpc("unique_generated_sentence", {"p_word_id": phraseID, "p_embedding": generated_embeddings.data[0].embedding }).execute()
+            new_embed_id = supabase.rpc("unique_generated_sentence", { "p_word_id": phrase_id, "p_embedding": generated_embeddings.data[0].embedding }).execute()
 
-            if is_similar_sentence.data == False:
-                return {"sentence": generated_text.output_text}
+            if new_embed_id.data > -1:
+                return { 
+                    "sentence": generated_text.output_text, 
+                    "new_embed_id": new_embed_id.data 
+                }
 
             num_calls += 1
 
         return {"error": "Failed to generate a unique sentence. Try again."}
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+
+@router.get("/review-user-response/{user_sentence}/{generated_sentence_id}")
+async def user_sentence_review(user_sentence: str, generated_sentence_id: int, supabase=Depends(get_user_client)):
+
+    try:
+
+        generated_embeddings = openai_client.embeddings.create(
+            input=user_sentence,
+            model="text-embedding-3-small"
+        )
+        
+        similarity_result = supabase.rpc("check_similarity_for_user_sentence", { "p_embed_id": generated_sentence_id, "p_embedding": generated_embeddings.data[0].embedding }).execute()
+        
+
+        return { "similarity": similarity_result.data }
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
