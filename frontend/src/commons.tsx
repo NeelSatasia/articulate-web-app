@@ -34,3 +34,9 @@ export interface VocabularyWord {
     definition: string
     frequency_score: number
 }
+
+export interface GrammarMistakes {
+    mistake_type: string
+    mistake: string
+    hint: string
+}
