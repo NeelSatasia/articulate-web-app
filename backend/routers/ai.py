@@ -1,12 +1,14 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
-from openai import OpenAI
+from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
 from userclient import get_user_client
+from models import GrammarReview
+from fastapi.concurrency import run_in_threadpool
 
 load_dotenv()
 
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -27,17 +29,17 @@ async def user_rewrite_phrases(phrase_id: int, supabase=Depends(get_user_client)
 
         while num_calls < 3:
 
-            generated_text = openai_client.responses.create(
+            generated_text = await openai_client.responses.create(
                 model="gpt-4.1-mini-2025-04-14",
                 input=prompt
             )
 
-            generated_embeddings = openai_client.embeddings.create(
+            generated_embeddings = await openai_client.embeddings.create(
                 input=generated_text.output_text,
                 model="text-embedding-3-small"
             )
 
-            new_embed_id = supabase.rpc("unique_generated_sentence", { "p_word_id": phrase_id, "p_embedding": generated_embeddings.data[0].embedding }).execute()
+            new_embed_id = run_in_threadpool(lambda: supabase.rpc("unique_generated_sentence", { "p_word_id": phrase_id, "p_embedding": generated_embeddings.data[0].embedding }).execute())
 
             if new_embed_id.data > -1:
                 return { 
@@ -53,19 +55,41 @@ async def user_rewrite_phrases(phrase_id: int, supabase=Depends(get_user_client)
         raise HTTPException(status_code=400, detail=str(e))
     
 
+@router.get("/grammar-check/{user_sentence}")
+async def grammar_check(user_sentence: str, supabase=Depends(get_user_client)):
+    
+    if len(user_sentence) == 0:
+        return
+
+    try:
+        prompt = "You are a grammar and spelling checker. Hints should guide correction, not give the full corrected sentence. Analyze the following sentence: " + user_sentence
+
+        grammar_check = await openai_client.responses.parse(
+                model="gpt-4.1-mini-2025-04-14",
+                input=prompt,
+                text_format=GrammarReview
+            )
+        
+        if grammar_check.output_parsed:
+            return { "grammar_check": grammar_check.output_parsed }
+
+        return { "grammar_check": { "mistakes": [] } }
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/review-user-response/{user_sentence}/{generated_sentence_id}")
 async def user_sentence_review(user_sentence: str, generated_sentence_id: int, supabase=Depends(get_user_client)):
 
     try:
-
-        generated_embeddings = openai_client.embeddings.create(
+        generated_embeddings = await openai_client.embeddings.create(
             input=user_sentence,
             model="text-embedding-3-small"
         )
         
-        similarity_result = supabase.rpc("check_similarity_for_user_sentence", { "p_embed_id": generated_sentence_id, "p_embedding": generated_embeddings.data[0].embedding }).execute()
+        similarity_result = run_in_threadpool(lambda: supabase.rpc("check_similarity_for_user_sentence", { "p_embed_id": generated_sentence_id, "p_embedding": generated_embeddings.data[0].embedding }).execute())
         
-
         return { "similarity": similarity_result.data }
     
     except Exception as e:
