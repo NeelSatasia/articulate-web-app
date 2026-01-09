@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Literal
 
 class User(BaseModel):
     user_name: str
@@ -14,3 +15,11 @@ class WordPhrase(BaseModel):
 
 class VocabularyWordInfo(BaseModel):
     word_id: int
+
+class GrammarMistakes(BaseModel):
+    mistake_type: Literal["grammar", "spelling", "punctuation", "style"]
+    mistake: str
+    hint: str
+
+class GrammarReview(BaseModel):
+    mistakes: list[GrammarMistakes]
