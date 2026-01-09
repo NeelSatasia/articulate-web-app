@@ -1,4 +1,4 @@
-import { isAuth, setAuthInLocalStorage, trueStr, type WordPhrase } from "@/commons"
+import { isAuth, setAuthInLocalStorage, trueStr, type GrammarMistakes, type WordPhrase } from "../commons"
 import api from "../api"
 import { useEffect, useRef, useState } from "react"
 import Loading from "./Loading"
@@ -17,6 +17,7 @@ interface WordPhraseResponse {
     isResponseReviewed: boolean
     similarity: number
     userResult: string
+    userGrammarMistakes: GrammarMistakes[]
 }
 
 const RewritePhrases = () => {
@@ -32,7 +33,7 @@ const RewritePhrases = () => {
                 const resp = await api.get('/wordbank')
 
                 resp.data.forEach((row: WordPhrase) => {
-                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false, similarity: 0.0, userResult: ""})
+                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false, similarity: 0.0, userResult: "", userGrammarMistakes: []})
                 })
 
                 console.log(wordBank.current)
@@ -91,11 +92,15 @@ const RewritePhrases = () => {
 
         try {
             setLoadingSentence(true)
+
+            const grammarCheckResp = await api.get("/ai/grammar-check/" + wordBank.current[currentIndex].userSentence)
+
+            wordBank.current[currentIndex].userGrammarMistakes = grammarCheckResp.data["grammar_check"]["mistakes"]
             
-            const resp = await api.get("/ai/review-user-response/" + wordBank.current[currentIndex].userSentence + "/" + wordBank.current[currentIndex].vectorEmbedID)
+            const similarityResp = await api.get("/ai/review-user-response/" + wordBank.current[currentIndex].userSentence + "/" + wordBank.current[currentIndex].vectorEmbedID)
 
             wordBank.current[currentIndex].isResponseReviewed = true
-            wordBank.current[currentIndex].similarity = Number((resp.data["similarity"] * 100).toFixed(2))
+            wordBank.current[currentIndex].similarity = Number((similarityResp.data["similarity"] * 100).toFixed(2))
 
             const similarity = wordBank.current[currentIndex].similarity
 
@@ -150,11 +155,10 @@ const RewritePhrases = () => {
                             wordBank.current[currentIndex].userSentence = e.target.value
                         }}
                         className="w-3/4"
-                        disabled={wordBank.current[currentIndex].isResponseReviewed}
-                    />
+                        disabled={wordBank.current[currentIndex].isResponseReviewed} />
 
                     {loadingSentence && wordBank.current[currentIndex].isResponseReviewed == false ? 
-                        <Spinner /> : 
+                        <Spinner className="mt-2" /> : 
                         wordBank.current[currentIndex].isResponseReviewed ?
                             <Card className="mt-4 bg-neutral-200">
                                 <CardHeader className="justify-center text-2xl">
