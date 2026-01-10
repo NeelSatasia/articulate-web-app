@@ -16,10 +16,13 @@ class WordPhrase(BaseModel):
 class VocabularyWordInfo(BaseModel):
     word_id: int
 
-class GrammarMistakes(BaseModel):
-    mistake_type: Literal["grammar", "spelling", "punctuation", "style"]
+class MistakeAndHint(BaseModel):
     mistake: str
     hint: str
 
+class GrammarMistake(BaseModel):
+    mistake_type: Literal["Grammar", "Spelling", "Punctuation", "Style"]
+    mistake_list: list[MistakeAndHint]
+
 class GrammarReview(BaseModel):
-    mistakes: list[GrammarMistakes]
+    mistakes: list[GrammarMistake]
