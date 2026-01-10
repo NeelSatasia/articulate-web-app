@@ -35,8 +35,12 @@ export interface VocabularyWord {
     frequency_score: number
 }
 
-export interface GrammarMistakes {
-    mistake_type: string
+export interface MistakeAndHint {
     mistake: string
     hint: string
+}
+
+export interface GrammarMistake {
+    mistake_type: string
+    mistake_list: MistakeAndHint[]
 }
