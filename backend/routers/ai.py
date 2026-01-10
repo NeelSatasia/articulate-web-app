@@ -39,7 +39,7 @@ async def user_rewrite_phrases(phrase_id: int, supabase=Depends(get_user_client)
                 model="text-embedding-3-small"
             )
 
-            new_embed_id = run_in_threadpool(lambda: supabase.rpc("unique_generated_sentence", { "p_word_id": phrase_id, "p_embedding": generated_embeddings.data[0].embedding }).execute())
+            new_embed_id = await run_in_threadpool(lambda: supabase.rpc("unique_generated_sentence", { "p_word_id": phrase_id, "p_embedding": generated_embeddings.data[0].embedding }).execute())
 
             if new_embed_id.data > -1:
                 return { 
@@ -60,7 +60,7 @@ async def grammar_check(user_sentence: str, supabase=Depends(get_user_client)):
     
     if len(user_sentence) == 0:
         return
-
+    
     try:
         prompt = "You are a grammar and spelling checker. Hints should guide correction, not give the full corrected sentence. Analyze the following sentence: " + user_sentence
 
@@ -88,7 +88,7 @@ async def user_sentence_review(user_sentence: str, generated_sentence_id: int, s
             model="text-embedding-3-small"
         )
         
-        similarity_result = run_in_threadpool(lambda: supabase.rpc("check_similarity_for_user_sentence", { "p_embed_id": generated_sentence_id, "p_embedding": generated_embeddings.data[0].embedding }).execute())
+        similarity_result = await run_in_threadpool(lambda: supabase.rpc("check_similarity_for_user_sentence", { "p_embed_id": generated_sentence_id, "p_embedding": generated_embeddings.data[0].embedding }).execute())
         
         return { "similarity": similarity_result.data }
     
