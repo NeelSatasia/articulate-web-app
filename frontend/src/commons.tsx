@@ -40,7 +40,11 @@ export interface MistakeAndHint {
     hint: string
 }
 
-export interface GrammarMistake {
-    mistake_type: string
-    mistake_list: MistakeAndHint[]
+export interface GrammarMistakeGroup {
+    mistake_type: "Grammar" | "Spelling" | "Punctuation"
+    mistakes: MistakeAndHint[]
+}
+
+export interface GrammarCheckResponse {
+    grammar_check: GrammarMistakeGroup[]
 }
