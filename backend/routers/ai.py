@@ -60,9 +60,9 @@ async def grammar_check(user_sentence: str, supabase=Depends(get_user_client)):
     
     if len(user_sentence) == 0:
         return
-    
+
     try:
-        prompt = "You are a grammar and spelling checker. Hints should guide correction, not give the full corrected sentence. Analyze the following sentence: " + user_sentence
+        prompt = "Check the given sentence ONLY for grammar, spelling, and/or punctuation errors. Hints should guide correction, not give the full corrected sentence. Analyze the following sentence: " + user_sentence
 
         grammar_check = await openai_client.responses.parse(
                 model="gpt-4.1-mini-2025-04-14",
@@ -71,9 +71,25 @@ async def grammar_check(user_sentence: str, supabase=Depends(get_user_client)):
             )
         
         if grammar_check.output_parsed:
-            return { "grammar_check": grammar_check.output_parsed }
+            result = {}
 
-        return { "grammar_check": { "mistakes": [] } }
+            for mistake in grammar_check.output_parsed.mistakes:
+                if mistake.mistake_type not in result:
+                    result[mistake.mistake_type] = []
+                
+                result[mistake.mistake_type].append(mistake.mistake)
+            
+            grammar_check_list = [
+                {
+                    "mistake_type": mistake_type,
+                    "mistakes": mistakes
+                }
+                for mistake_type, mistakes in result.items()
+            ]
+
+            return { "grammar_check": grammar_check_list }
+
+        return { "grammar_check": {} }
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
