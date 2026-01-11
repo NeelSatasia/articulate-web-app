@@ -21,8 +21,8 @@ class MistakeAndHint(BaseModel):
     hint: str
 
 class GrammarMistake(BaseModel):
-    mistake_type: Literal["Grammar", "Spelling", "Punctuation", "Style"]
-    mistake_list: list[MistakeAndHint]
+    mistake_type: Literal["Grammar", "Spelling", "Punctuation"]
+    mistake: MistakeAndHint
 
 class GrammarReview(BaseModel):
     mistakes: list[GrammarMistake]
