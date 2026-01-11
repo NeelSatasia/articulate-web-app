@@ -1,11 +1,11 @@
-import { isAuth, setAuthInLocalStorage, trueStr, type GrammarMistake, type MistakeAndHint, type WordPhrase } from "../commons"
+import { isAuth, setAuthInLocalStorage, trueStr, type GrammarCheckResponse, type GrammarMistakeGroup, type MistakeAndHint, type WordPhrase } from "../commons"
 import api from "../api"
 import { useEffect, useRef, useState } from "react"
 import Loading from "./Loading"
 import { Button } from "./ui/button"
 import { Spinner } from "./ui/spinner"
 import { Input } from "./ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card"
 
 interface WordPhraseResponse {
     phraseID: number
@@ -17,7 +17,7 @@ interface WordPhraseResponse {
     isResponseReviewed: boolean
     similarity: number
     userResult: string
-    userGrammarMistakes: GrammarMistake[]
+    userGrammarMistakes: GrammarCheckResponse
 }
 
 const RewritePhrases = () => {
@@ -33,7 +33,7 @@ const RewritePhrases = () => {
                 const resp = await api.get('/wordbank')
 
                 resp.data.forEach((row: WordPhrase) => {
-                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false, similarity: 0.0, userResult: "", userGrammarMistakes: []})
+                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false, similarity: 0.0, userResult: "", userGrammarMistakes: {grammar_check: []} })
                 })
 
                 console.log(wordBank.current)
@@ -95,9 +95,11 @@ const RewritePhrases = () => {
 
             const grammarCheckResp = await api.get("/ai/grammar-check/" + wordBank.current[currentIndex].userSentence)
 
-            wordBank.current[currentIndex].userGrammarMistakes = grammarCheckResp.data["grammar_check"]["mistakes"]
+            wordBank.current[currentIndex].userGrammarMistakes = grammarCheckResp.data
+
+            console.log(wordBank.current[currentIndex].userGrammarMistakes)
             
-            if (wordBank.current[currentIndex].userGrammarMistakes.length == 0) {
+            if (wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length == 0) {
 
                 const similarityResp = await api.get("/ai/review-user-response/" + wordBank.current[currentIndex].userSentence + "/" + wordBank.current[currentIndex].vectorEmbedID)
 
@@ -107,7 +109,7 @@ const RewritePhrases = () => {
                 const similarity = wordBank.current[currentIndex].similarity
 
                 if (similarity >= 80.0 && similarity < 100) {
-                    wordBank.current[currentIndex].userResult = "Good job!"
+                    wordBank.current[currentIndex].userResult = "Well done!"
                 } else if (similarity >= 70.0 && similarity < 80.0) {
                     wordBank.current[currentIndex].userResult = "Your sentence is almost matching!"
                 } else if (similarity < 70.0) {
@@ -131,8 +133,10 @@ const RewritePhrases = () => {
     return (
         <div className="flex flex-col justify-center w-full bg-neutral-100 rounded-md p-4">
             <div className="flex justify-center mb-10">
-                <Button className="bg-neutral-400 hover:bg-neutral-400" onClick={prevWordPhrase}>Previous</Button>
-                <Button className="bg-primary ml-4" onClick={nextWordPhrase}>Next</Button>
+                <Button className="bg-zinc-500 hover:bg-neutral-400" onClick={prevWordPhrase}>Previous</Button>
+                <Button className={`${wordBank.current[currentIndex].isSentenceGenerated ? "bg-teal-600 hover:bg-teal-500" : "bg-cyan-600 hover:bg-cyan-500"} ml-4`} onClick={nextWordPhrase}>
+                    {wordBank.current[currentIndex].isSentenceGenerated ? "Continue" : "Skip"}
+                </Button>
             </div>
 
             <div className="flex flex-col justify-center items-center">
@@ -158,15 +162,15 @@ const RewritePhrases = () => {
                             wordBank.current[currentIndex].userSentence = e.target.value
                         }}
                         className="w-3/4"
-                        disabled={wordBank.current[currentIndex].isResponseReviewed} />
+                        disabled={wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length == 0 && wordBank.current[currentIndex].similarity >= 80.0} />
 
                     {loadingSentence && wordBank.current[currentIndex].isResponseReviewed == false ? 
                         <Spinner className="mt-2" /> : 
-                        wordBank.current[currentIndex].isResponseReviewed || wordBank.current[currentIndex].userGrammarMistakes.length > 0 ?
+                        wordBank.current[currentIndex].isResponseReviewed || wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 ?
                             <Card className="mt-4 bg-neutral-100">
                                 <CardHeader className="text-2xl text-center">
-                                    <CardTitle className={`${wordBank.current[currentIndex].userGrammarMistakes.length > 0 ? "text-red-600" : "text-primary"}`}>
-                                        { wordBank.current[currentIndex].userGrammarMistakes.length > 0 ? 
+                                    <CardTitle className={`${wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 ? "text-red-600" : "text-primary"}`}>
+                                        { wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 ? 
                                             "Found Grammar/Spelling Mistakes" : 
                                             "Sentence Similarity Result"
                                         }
@@ -176,31 +180,41 @@ const RewritePhrases = () => {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    { wordBank.current[currentIndex].userGrammarMistakes.length > 0 ? 
-                                        <div className="text-color-600">
-                                            {wordBank.current[currentIndex].userGrammarMistakes.map((mistakeTypeList: GrammarMistake) => (
-                                                <ul className="list-disc pl-6 mb-4">
-                                                    <li><b>Type: </b>{mistakeTypeList.mistake_type}
-                                                        <ul className="list-disc pl-6">
-                                                            {mistakeTypeList.mistake_list.map((mistake: MistakeAndHint) => (
+                                    { wordBank.current[currentIndex].userGrammarMistakes?.grammar_check?.length > 0 ? 
+                                        <div className="text-red-600">
+                                            {wordBank.current[currentIndex].userGrammarMistakes.grammar_check.map((mistakeTypeList: GrammarMistakeGroup) => (
+                                                <div className="bg-red-200 rounded-lg p-2 mt-3">
+                                                    <div className="mb-2"><b className="text-lg">{mistakeTypeList.mistake_type}</b></div>
+                                                    <ol type="1" className="list-decimal pl-10">
+                                                        {mistakeTypeList.mistakes.map((mistake: MistakeAndHint) => (
+                                                            <div className="mt-2">
                                                                 <li>{mistake.mistake}
                                                                     <ul className="pl-6">
-                                                                        <li>-<b>Hint: </b>{mistake.hint}</li>
+                                                                        <li>- <b>Hint: </b>{mistake.hint}</li>
                                                                     </ul>
                                                                 </li>
-                                                            ))}
-                                                        </ul>
-                                                    </li>
-                                                </ul>
+                                                            </div>
+                                                        ))}
+                                                    </ol>
+                                                </div>
                                             ))}
                                         </div> :
                                         <div>
-                                            <p className="mt-2"><b>Rephrase Similarity:</b> {wordBank.current[currentIndex].similarity}%</p>
+                                            <p className="mt-2"><b>Similarity:</b> {wordBank.current[currentIndex].similarity}%</p>
                                             <p><b>Feedback:</b> {wordBank.current[currentIndex].userResult}</p>
                                         </div>
                                     }
                                     
                                 </CardContent>
+                                
+                                {(wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 || wordBank.current[currentIndex].similarity < 80.0) && 
+                                    <CardFooter className="justify-center">
+                                        <div className="text-center">
+                                            <p className="text-xs text-neutral-400">Change your response first, then click Try Again</p>
+                                            <Button className="bg-teal-600 hover:bg-teal-500 mt-2" onClick={reviewUserResponse}>Try Again</Button>
+                                        </div>
+                                    </CardFooter>
+                                }
                             </Card> :
                             <Button className="bg-teal-600 hover:bg-teal-500 mt-4" onClick={reviewUserResponse}>Review with AI</Button>
                     }
