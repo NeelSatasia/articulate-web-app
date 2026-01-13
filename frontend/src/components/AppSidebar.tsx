@@ -62,7 +62,7 @@ const AppSidebar = () => {
                                 <Collapsible defaultOpen className="group/collapsible">
                                     <CollapsibleTrigger asChild>
                                         <SidebarMenuButton>
-                                            Train
+                                            Playground
                                             <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
@@ -71,7 +71,7 @@ const AppSidebar = () => {
                                         <SidebarMenuSub>
                                             <SidebarMenuSubItem>
                                                 <SidebarMenuButton asChild>
-                                                    <Link to="/rewritephrases">Rewrite Phrases</Link>
+                                                    <Link to="/rewritephrases">Sentence Crafting</Link>
                                                 </SidebarMenuButton>
                                             </SidebarMenuSubItem>
                                         </SidebarMenuSub>
