@@ -58,11 +58,19 @@ async def user_rewrite_phrases(phrase_id: int, supabase=Depends(get_user_client)
 @router.get("/grammar-check/{user_sentence}")
 async def grammar_check(user_sentence: str, supabase=Depends(get_user_client)):
     
-    if len(user_sentence) == 0:
-        return
+    if len(user_sentence.strip()) == 0:
+        return { "grammar_check": [] }
 
     try:
-        prompt = "Check the given sentence ONLY for grammar, spelling, and/or punctuation errors. Hints should guide correction, not give the full corrected sentence. Analyze the following sentence: " + user_sentence
+        
+        prompt = f"""
+            Find grammar or spelling errors only.
+            Ignore style or wording.
+            If none, return [].
+
+            Sentence:
+            {user_sentence}
+        """
 
         grammar_check = await openai_client.responses.parse(
                 model="gpt-4.1-mini-2025-04-14",
@@ -89,7 +97,7 @@ async def grammar_check(user_sentence: str, supabase=Depends(get_user_client)):
 
             return { "grammar_check": grammar_check_list }
 
-        return { "grammar_check": {} }
+        return { "grammar_check": [] }
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -100,7 +108,7 @@ async def user_sentence_review(user_sentence: str, generated_sentence_id: int, s
 
     try:
         generated_embeddings = await openai_client.embeddings.create(
-            input=user_sentence,
+            input=user_sentence.strip(),
             model="text-embedding-3-small"
         )
         
