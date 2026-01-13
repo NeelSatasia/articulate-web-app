@@ -1,11 +1,12 @@
-import { isAuth, setAuthInLocalStorage, trueStr, type GrammarCheckResponse, type GrammarMistakeGroup, type MistakeAndHint, type WordPhrase } from "../commons"
+import { falseStr, isAuth, setAuthInLocalStorage, trueStr, type GrammarCheckResponse, type GrammarMistakeGroup, type MistakeAndHint, type WordPhrase } from "../commons"
 import api from "../api"
 import { useEffect, useRef, useState } from "react"
 import Loading from "./Loading"
 import { Button } from "./ui/button"
 import { Spinner } from "./ui/spinner"
 import { Input } from "./ui/input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card"
+import { Navigate } from "react-router-dom"
 
 interface WordPhraseResponse {
     phraseID: number
@@ -18,6 +19,7 @@ interface WordPhraseResponse {
     similarity: number
     userResult: string
     userGrammarMistakes: GrammarCheckResponse
+    isFoundMistakes: boolean
 }
 
 const RewritePhrases = () => {
@@ -26,6 +28,7 @@ const RewritePhrases = () => {
     const [loading, setLoading] = useState<boolean>(true)
     const [currentIndex, setCurrentIndex] = useState<number>(0)
     const [loadingSentence, setLoadingSentence] = useState<boolean>(false)
+    const [_, setRefresh] = useState<number>(0)
 
     useEffect(() => {
         const getWordBank = async () => {
@@ -33,10 +36,8 @@ const RewritePhrases = () => {
                 const resp = await api.get('/wordbank')
 
                 resp.data.forEach((row: WordPhrase) => {
-                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false, similarity: 0.0, userResult: "", userGrammarMistakes: {grammar_check: []} })
+                    wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false, similarity: 0.0, userResult: "", userGrammarMistakes: {grammar_check: []}, isFoundMistakes: false })
                 })
-
-                console.log(wordBank.current)
 
                 localStorage.setItem(isAuth, trueStr)
 
@@ -86,48 +87,62 @@ const RewritePhrases = () => {
     }
 
     const reviewUserResponse = async () => {
-        if (wordBank.current[currentIndex].userSentence.trim().length === 0 || !wordBank.current[currentIndex].vectorEmbedID) {
-            return
+
+        
+
+        if (wordBank.current[currentIndex].userSentence.trim().length === 0 || !wordBank.current[currentIndex].vectorEmbedID || !wordBank.current[currentIndex].userSentence.trim().toLowerCase().includes(wordBank.current[currentIndex].phrase.toLowerCase())) {
+            wordBank.current[currentIndex].isFoundMistakes = true
+            setRefresh(prev => prev + 1)
+        } else {
+            wordBank.current[currentIndex].isFoundMistakes = false
         }
 
-        try {
-            setLoadingSentence(true)
+        if (!wordBank.current[currentIndex].isFoundMistakes) {
+            try {
+                setLoadingSentence(true)
 
-            const grammarCheckResp = await api.get("/ai/grammar-check/" + wordBank.current[currentIndex].userSentence)
+                const grammarCheckResp = await api.get("/ai/grammar-check/" + wordBank.current[currentIndex].userSentence)
 
-            wordBank.current[currentIndex].userGrammarMistakes = grammarCheckResp.data
+                wordBank.current[currentIndex].userGrammarMistakes = grammarCheckResp.data
 
-            console.log(wordBank.current[currentIndex].userGrammarMistakes)
-            
-            if (wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length == 0) {
-
-                const similarityResp = await api.get("/ai/review-user-response/" + wordBank.current[currentIndex].userSentence + "/" + wordBank.current[currentIndex].vectorEmbedID)
-
-                wordBank.current[currentIndex].isResponseReviewed = true
-                wordBank.current[currentIndex].similarity = Number((similarityResp.data["similarity"] * 100).toFixed(2))
-
-                const similarity = wordBank.current[currentIndex].similarity
-
-                if (similarity >= 80.0 && similarity < 100) {
-                    wordBank.current[currentIndex].userResult = "Well done!"
-                } else if (similarity >= 70.0 && similarity < 80.0) {
-                    wordBank.current[currentIndex].userResult = "Your sentence is almost matching!"
-                } else if (similarity < 70.0) {
-                    wordBank.current[currentIndex].userResult = "Failed to match the sentence!"
+                if (wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0) {
+                    wordBank.current[currentIndex].isFoundMistakes = true
                 } else {
-                    wordBank.current[currentIndex].userResult = "Your sentence is too similar!"
+                    wordBank.current[currentIndex].isFoundMistakes = false
                 }
-            }
+                
+                if (!wordBank.current[currentIndex].isFoundMistakes) {
 
-        } catch (error) {
-            console.error("Error reviewing user sentence", error)
-        } finally {
-            setLoadingSentence(false)
+                    const similarityResp = await api.get("/ai/review-user-response/" + wordBank.current[currentIndex].userSentence + "/" + wordBank.current[currentIndex].vectorEmbedID)
+
+                    wordBank.current[currentIndex].isResponseReviewed = true
+                    wordBank.current[currentIndex].similarity = Number((similarityResp.data["similarity"] * 100).toFixed(2))
+
+                    const similarity = wordBank.current[currentIndex].similarity
+
+                    if (similarity >= 70.0 && similarity <= 95) {
+                        wordBank.current[currentIndex].userResult = "Well done!"
+                    } else if (similarity > 95) {
+                        wordBank.current[currentIndex].userResult = "Your sentence is too similar. Please try again!"
+                    } else {
+                        wordBank.current[currentIndex].userResult = "Can be improved"
+                    }
+                }
+
+            } catch (error) {
+                console.error("Error reviewing user sentence", error)
+            } finally {
+                setLoadingSentence(false)
+            }
         }
     }
 
     if (loading) {
         return <Loading spinnerAction="Loading"/>
+    }
+
+    if (localStorage.getItem(isAuth) === falseStr) {
+        return <Navigate to={"/"} replace/>
     }
 
     return (
@@ -155,33 +170,40 @@ const RewritePhrases = () => {
 
                 {wordBank.current[currentIndex].isSentenceGenerated && <div className="mt-4 w-full justify-center items-center flex flex-col ">
                     <Input
+                        key="user-sentence-input"
                         type="text"
                         placeholder="Re-phrase the sentence here..."
                         defaultValue={wordBank.current[currentIndex].userSentence}
                         onChange={(e) => {
-                            wordBank.current[currentIndex].userSentence = e.target.value
+                            if (e.target.value.length <= 255) {
+                                wordBank.current[currentIndex].userSentence = e.target.value
+                            }
                         }}
                         className="w-3/4"
-                        disabled={wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length == 0 && wordBank.current[currentIndex].similarity >= 80.0} />
+                        disabled={wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length == 0 && wordBank.current[currentIndex].similarity >= 70.0} />
 
-                    {loadingSentence && wordBank.current[currentIndex].isResponseReviewed == false ? 
+                    {loadingSentence ? 
                         <Spinner className="mt-2" /> : 
-                        wordBank.current[currentIndex].isResponseReviewed || wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 ?
+                        wordBank.current[currentIndex].isResponseReviewed || wordBank.current[currentIndex].isFoundMistakes ?
                             <Card className="mt-4 bg-neutral-100">
                                 <CardHeader className="text-2xl text-center">
-                                    <CardTitle className={`${wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 ? "text-red-600" : "text-primary"}`}>
-                                        { wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 ? 
-                                            "Found Grammar/Spelling Mistakes" : 
-                                            "Sentence Similarity Result"
+                                    <CardTitle className={`${wordBank.current[currentIndex].isFoundMistakes ? "text-red-600" : "text-primary"}`}>
+                                        { wordBank.current[currentIndex].isFoundMistakes  ? 
+                                            "Mistakes/Erros Found!" : "Similarity Result"
                                         }
                                     </CardTitle>
-                                    <CardDescription >
-                                        
-                                    </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-                                    { wordBank.current[currentIndex].userGrammarMistakes?.grammar_check?.length > 0 ? 
+                                    { wordBank.current[currentIndex].isFoundMistakes ? 
                                         <div className="text-red-600">
+                                            {!wordBank.current[currentIndex].vectorEmbedID && <p>System failure on saving the generated sentence</p>}
+
+                                            {wordBank.current[currentIndex].userSentence.trim().length === 0 && <p>Empty response</p>}
+
+                                            {!wordBank.current[currentIndex].userSentence.toLowerCase().includes(wordBank.current[currentIndex].phrase.toLowerCase()) && 
+                                                <p>No usage of the word-phrase in the sentence</p>
+                                            }
+
                                             {wordBank.current[currentIndex].userGrammarMistakes.grammar_check.map((mistakeTypeList: GrammarMistakeGroup) => (
                                                 <div className="bg-red-200 rounded-lg p-2 mt-3">
                                                     <div className="mb-2"><b className="text-lg">{mistakeTypeList.mistake_type}</b></div>
@@ -207,7 +229,7 @@ const RewritePhrases = () => {
                                     
                                 </CardContent>
                                 
-                                {(wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 || wordBank.current[currentIndex].similarity < 80.0) && 
+                                {(wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 || wordBank.current[currentIndex].similarity < 70.0) && 
                                     <CardFooter className="justify-center">
                                         <div className="text-center">
                                             <p className="text-xs text-neutral-400">Change your response first, then click Try Again</p>
@@ -216,7 +238,7 @@ const RewritePhrases = () => {
                                     </CardFooter>
                                 }
                             </Card> :
-                            <Button className="bg-teal-600 hover:bg-teal-500 mt-4" onClick={reviewUserResponse}>Review with AI</Button>
+                            <Button className="bg-teal-600 hover:bg-teal-500 mt-4" onClick={reviewUserResponse} >Review with AI</Button>
                     }
 
                 </div>}
