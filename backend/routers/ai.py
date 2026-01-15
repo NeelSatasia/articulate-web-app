@@ -3,7 +3,7 @@ from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
 from userclient import get_user_client
-from models import GrammarReview
+from models import GrammarReview, WordInfo
 from fastapi.concurrency import run_in_threadpool
 
 load_dotenv()
@@ -116,5 +116,49 @@ async def user_sentence_review(user_sentence: str, generated_sentence_id: int, s
         
         return { "similarity": similarity_result.data }
     
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+
+@router.get("/vocabulary-word/{word}")
+async def vocabulary_word(word: str, request: Request, supabase=Depends(get_user_client)):
+
+    user = request.session.get('user')
+
+    cleaned_word = word.strip().lower()
+
+    if len(cleaned_word) == 0 or len(cleaned_word) > 20 or len(cleaned_word.split(" ")) > 1 or cleaned_word.isalpha() == False:
+        return { "vocab_word_info": [] }
+    
+    try:
+
+        word_exists = await run_in_threadpool(lambda: supabase.table("vocabulary_words").select("*").eq("word", cleaned_word).execute())
+
+        if len(word_exists.data) > 0:
+            await run_in_threadpool(lambda: supabase.table("user_vocabulary").insert({"user_id": user["user_id"], "word_id": word_exists.data[0]["word_id"]}).execute())
+            return { "vocab_word_info": result.data}
+
+        prompt = f"""
+            First, check if the given word ({cleaned_word}) is valid, appropriate, and not abusive.
+            If true, return the word, its definition, and CEFR level; otherwise return []
+        """
+
+        word_result = await openai_client.responses.parse(
+                model="gpt-4.1-mini-2025-04-14",
+                input=prompt,
+                text_format=WordInfo
+            )
+        
+        if word_result.output_parsed:
+            cefr_conversion = {"A1": 1, "A2": 2, "B1": 3, "B2": 4, "C1": 5, "C2": 6}
+
+            result = await run_in_threadpool(lambda: supabase.table("vocabulary_words").insert({"word": word_result.output_parsed.word, "definition": word_result.output_parsed.definition, "word_level": cefr_conversion[word_result.output_parsed.cefr_level]}).execute())
+
+            if result:
+                await run_in_threadpool(lambda: supabase.table("user_vocabulary").insert({"user_id": user["user_id"], "word_id": result.data[0]["word_id"]}).execute())
+                return { "vocab_word_info": result.data}
+        
+        return { "vocab_word_info": []}
+        
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
