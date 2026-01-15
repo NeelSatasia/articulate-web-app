@@ -11,7 +11,7 @@ router = APIRouter(prefix="/vocabulary", tags=["Vocabulary"])
 async def user_vocabulary(supabase=Depends(get_user_client)):
     
     try:
-        result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").select("word_id, vocabulary_words(word, definition, frequency_score)").order("word_id").execute())
+        result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").select("word_id, vocabulary_words(word, definition, word_level)").order("word_id").execute())
 
         if result:
 
@@ -22,7 +22,7 @@ async def user_vocabulary(supabase=Depends(get_user_client)):
                     "word_id": item["word_id"], 
                     "word": item["vocabulary_words"]["word"], 
                     "definition": item["vocabulary_words"]["definition"], 
-                    "frequency_score": item["vocabulary_words"]["frequency_score"]
+                    "word_level": item["vocabulary_words"]["word_level"]
                 })
 
             return cleaned_data
@@ -40,10 +40,9 @@ async def user_dashboard(supabase=Depends(get_user_client)):
 
     try:
         
-        new_result = await run_in_threadpool(lambda: supabase.rpc('get_unique_vocabulary_words_for_user').execute())
+        #TODO: Retrieve at least 5 unique user's vocabulary words every 24 hours
 
-        if new_result:
-            return new_result.data
+        return []
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
