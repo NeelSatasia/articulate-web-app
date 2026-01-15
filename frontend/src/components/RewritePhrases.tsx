@@ -33,7 +33,7 @@ const RewritePhrases = () => {
     useEffect(() => {
         const getWordBank = async () => {
             try {
-                const resp = await api.get('/wordbank')
+                const resp = await api.get("/wordbank")
 
                 resp.data.forEach((row: WordPhrase) => {
                     wordBank.current.push({phraseID: row.word_id, phrase: row.word_phrase, generatedSentence: "", userSentence: "", isSentenceGenerated: false, isResponseReviewed: false, similarity: 0.0, userResult: "", userGrammarMistakes: {grammar_check: []}, isFoundMistakes: false })
@@ -71,7 +71,7 @@ const RewritePhrases = () => {
 
         try {
             setLoadingSentence(true)
-            const resp = await api.get('/ai/generate-sentence/' + wordBank.current[currentIndex].phraseID)
+            const resp = await api.get("/ai/generate-sentence/" + wordBank.current[currentIndex].phraseID)
             
             if (resp.data.sentence && resp.data.new_embed_id) {
                 wordBank.current[currentIndex].generatedSentence = resp.data.sentence
@@ -146,7 +146,7 @@ const RewritePhrases = () => {
     }
 
     return (
-        <div className="flex flex-col justify-center w-full bg-neutral-100 rounded-md p-4">
+        <div className="flex flex-col justify-center bg-neutral-100 rounded-md m-4 p-4">
             <div className="flex justify-center mb-10">
                 <Button className="bg-zinc-500 hover:bg-neutral-400" onClick={prevWordPhrase}>Previous</Button>
                 <Button className={`${wordBank.current[currentIndex].isSentenceGenerated ? "bg-teal-600 hover:bg-teal-500" : "bg-cyan-600 hover:bg-cyan-500"} ml-4`} onClick={nextWordPhrase}>
@@ -187,9 +187,9 @@ const RewritePhrases = () => {
                         wordBank.current[currentIndex].isResponseReviewed || wordBank.current[currentIndex].isFoundMistakes ?
                             <Card className="mt-4 bg-neutral-100">
                                 <CardHeader className="text-2xl text-center">
-                                    <CardTitle className={`${wordBank.current[currentIndex].isFoundMistakes ? "text-red-600" : "text-primary"}`}>
+                                    <CardTitle className={`${wordBank.current[currentIndex].isFoundMistakes ? "text-red-600" : "text-primary"} text-nowrap`}>
                                         { wordBank.current[currentIndex].isFoundMistakes  ? 
-                                            "Mistakes/Erros Found!" : "Similarity Result"
+                                            "Mistakes/Erros Found!" : "Result"
                                         }
                                     </CardTitle>
                                 </CardHeader>
@@ -201,7 +201,7 @@ const RewritePhrases = () => {
                                             {wordBank.current[currentIndex].userSentence.trim().length === 0 && <p>Empty response</p>}
 
                                             {!wordBank.current[currentIndex].userSentence.toLowerCase().includes(wordBank.current[currentIndex].phrase.toLowerCase()) && 
-                                                <p>No usage of the word-phrase in the sentence</p>
+                                                <p>Incomplete usage of the given word-phrase in the sentence</p>
                                             }
 
                                             {wordBank.current[currentIndex].userGrammarMistakes.grammar_check.map((mistakeTypeList: GrammarMistakeGroup) => (
