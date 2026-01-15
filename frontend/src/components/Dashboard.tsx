@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import api from "../api"
 import {falseStr, isAuth, loadingStr, setAuthInLocalStorage, trueStr, userName, type VocabularyWord, type WordPhrase } from "../commons"
 import Loading from "./Loading"
@@ -42,17 +42,6 @@ const Dashboard = () => {
         getAuth()
     }, [])
 
-    const addWord = async (new_word_id: number) => {
-        try {
-            setLoading(true)
-            await api.post("/vocabulary", { word_id: new_word_id })
-        } catch (error) {
-            console.error("Error adding new vocabulary", error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
     if (loading) {
         return <Loading spinnerAction={loadingStr}/>
     }
@@ -62,7 +51,7 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="flex flex-col justify-center items-center gap-y-5">
+        <div className="flex flex-col justify-center items-center gap-y-5 p-4">
             <div className="w-full p-2 outline outline-offset outline-primary rounded">
                 <h1 className="text-3xl mb-2">Today's Word Phrases</h1>
                 <Table key="dashboard-word-phrases" className="rounded bg-neutral-100">
@@ -89,11 +78,6 @@ const Dashboard = () => {
                                 </TableCell>
                                 <TableCell key={"dashboard-new-vocabulary-definition-" + vocabulary.word_id} >
                                     {vocabulary.definition}
-                                </TableCell>
-                                <TableCell className="rounded-r-md">
-                                    <Button onClick={() => addWord(vocabulary.word_id)} className="bg-green-600 hover:bg-green-500 text-white">
-                                        Add
-                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}
