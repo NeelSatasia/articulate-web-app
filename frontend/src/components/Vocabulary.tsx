@@ -1,24 +1,25 @@
 import api from "@/api";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import Loading from "./Loading";
 import { falseStr, isAuth, trueStr, type VocabularyWord } from "../commons";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 const Vocabulary = () => {
 
     const [vocabulary, setVocabulary] = useState<VocabularyWord[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+    const [newWord, setNewWord] = useState<string>("")
 
     useEffect(() => {
         const fetchVocabulary = async () => {
             try {
                 if (localStorage.getItem(isAuth) === trueStr) {
-                    const resp = await api.get('/vocabulary');
+                    const resp = await api.get("/vocabulary");
                     
                     localStorage.setItem(isAuth, trueStr);
-                    console.log("Fetched vocabulary:", resp.data);
                     setVocabulary(resp.data);
                 }
             } catch (error) {
@@ -31,6 +32,30 @@ const Vocabulary = () => {
         fetchVocabulary();
     }, []);
 
+    const addNewVocabularyWord = async () => {
+
+        for (const vWord of vocabulary) {
+            if (vWord.word === newWord) {
+                return
+            }
+        }
+
+        if (newWord.length > 0 && newWord.length <= 20) {
+            try {
+                if (localStorage.getItem(isAuth) === trueStr) {
+                    const resp = await api.get("/vocabulary-word/" + newWord);
+                    
+                    localStorage.setItem(isAuth, trueStr);
+                    
+                    setVocabulary(prev => [...prev, resp.data]);
+                }
+            } catch (error) {
+                console.error("Error fetching vocabulary", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+    }
 
     const deleteWord = async (del_word_id: number) => {
         try {
@@ -53,8 +78,24 @@ const Vocabulary = () => {
     }
 
     return (
-        <div>
+        <div className="flex flex-col p-4 gap-y-4">
             <h1 className="text-3xl mb-4">Your Vocabulary</h1>
+
+            <div className="flex gap-x-2">
+                <Button key="add-new-vocabulary-word" onClick={addNewVocabularyWord}>Add</Button>
+
+                <Input 
+                    id="new-vocabulary-word-input" 
+                    placeholder="Search a new word here" 
+                    type="text" value={newWord} 
+                    onChange={(e) => {
+                        if (!e.target.value.includes(' ') && !/\d/.test(e.target.value) && !/[^a-zA-Z0-9]/.test(e.target.value)) {
+                            setNewWord(e.target.value)
+                        }
+                    }} />
+
+            
+            </div>
 
             {vocabulary.length === 0 ? (
                 <div className="w-full h-full justify-center items-center">You have no vocabulary words yet.</div>
@@ -78,8 +119,8 @@ const Vocabulary = () => {
                                         {vocabWord.definition}
                                     </TableCell>
                                     <TableCell className="rounded-r-md">
-                                        <Button onClick={() => deleteWord(vocabWord.word_id)} className="bg-red-600 hover:bg-red-500 text-white">
-                                            Del
+                                        <Button onClick={() => deleteWord(vocabWord.word_id)} className="bg-red-400 hover:bg-red-500 text-white">
+                                            Delete
                                         </Button>
                                     </TableCell>
                                 </TableRow>
