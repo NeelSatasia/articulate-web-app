@@ -48,7 +48,7 @@ const AppSidebar = () => {
 
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild className="text-sm">
-                                    <Link to="/wordbank">Word Bank</Link>
+                                    <Link to="/wordbank">Commonplace Book</Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
 
