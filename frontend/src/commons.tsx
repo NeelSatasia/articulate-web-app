@@ -32,7 +32,7 @@ export interface VocabularyWord {
     word_id: number
     word: string
     definition: string
-    frequency_score: number
+    word_level: number
 }
 
 export interface MistakeAndHint {
