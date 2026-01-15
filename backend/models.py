@@ -26,3 +26,8 @@ class GrammarMistake(BaseModel):
 
 class GrammarReview(BaseModel):
     mistakes: list[GrammarMistake]
+
+class WordInfo(BaseModel):
+    word: str
+    definition: str
+    cefr_level: str
