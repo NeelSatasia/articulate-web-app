@@ -128,7 +128,7 @@ async def vocabulary_word(word: str, request: Request, supabase=Depends(get_user
     cleaned_word = word.strip().lower()
 
     if len(cleaned_word) == 0 or len(cleaned_word) > 20 or len(cleaned_word.split(" ")) > 1 or cleaned_word.isalpha() == False:
-        return { "vocab_word_info": [] }
+        return []
     
     try:
 
@@ -136,7 +136,7 @@ async def vocabulary_word(word: str, request: Request, supabase=Depends(get_user
 
         if len(word_exists.data) > 0:
             await run_in_threadpool(lambda: supabase.table("user_vocabulary").insert({"user_id": user["user_id"], "word_id": word_exists.data[0]["word_id"]}).execute())
-            return { "vocab_word_info": result.data}
+            return word_exists.data
 
         prompt = f"""
             First, check if the given word ({cleaned_word}) is valid, appropriate, and not abusive.
@@ -156,9 +156,9 @@ async def vocabulary_word(word: str, request: Request, supabase=Depends(get_user
 
             if result:
                 await run_in_threadpool(lambda: supabase.table("user_vocabulary").insert({"user_id": user["user_id"], "word_id": result.data[0]["word_id"]}).execute())
-                return { "vocab_word_info": result.data}
+                return result.data
         
-        return { "vocab_word_info": []}
+        return []
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
