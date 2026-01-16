@@ -2,6 +2,7 @@ from userclient import get_user_client
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.concurrency import run_in_threadpool
 from models import VocabularyWordInfo
+from typing import List
 
 router = APIRouter(prefix="/vocabulary", tags=["Vocabulary"])
 
@@ -79,20 +80,18 @@ async def add_vocabulary_word(word_info: VocabularyWordInfo, request: Request, s
 # DELETE ------------------------------------------------------------------------------------------------------------------------------------
 
 @router.delete("")
-async def remove_vocabulary_word(word_info: VocabularyWordInfo, request: Request, supabase=Depends(get_user_client)):
-
-    user = request.session.get('user')
+async def delete_vocabulary_word(word_ids: List[int], supabase=Depends(get_user_client)):
 
     try:
-        result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").delete().eq("word_id", word_info.word_id).execute())
+        result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").delete().in_("word_id", word_ids).execute())
 
         if result:
             return {
-                "message": f"Successfully removed word with id {word_info.word_id} from user's vocabulary!"
+                "message": f"Successfully removed selected words from user's vocabulary!"
             }
         
         return {
-            "error": f"Failed to remove word with id {word_info.word_id} from user's vocabulary!"
+            "error": f"Failed to remove selected words from user's vocabulary!"
         }
     
     except Exception as e:
