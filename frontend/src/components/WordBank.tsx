@@ -86,7 +86,7 @@ const WordBank = () => {
         getWordBank()
     }, [])
 
-    const addNewWordPhrase = async (categoryID: number) => {
+    const addNewWordPhrase = (categoryID: number) => {
 
         if (!newWordPhrases.current.has(categoryID)) {
             newWordPhrases.current.set(categoryID, [])
@@ -190,6 +190,8 @@ const WordBank = () => {
         if (editMode) {
 
             setSaving(true)
+
+            //TODO: check if modified/new entries are empty
 
             if (localStorage.getItem(isAuth) === trueStr && deleteExistingCategories.current.size > 0) {
                 deleteExistingCategories.current.forEach((categoryID: number) => {
@@ -387,7 +389,7 @@ const WordBank = () => {
 
     return (
         
-        <div>
+        <div className="p-4">
             
             <div className="mb-4 flex">
                 <Button key="edit-wordbank" className="mr-2" onClick={changeEditMode}>
@@ -404,52 +406,57 @@ const WordBank = () => {
 
             </div>
 
-            <Accordion type="multiple" value={accordionDefaults} onValueChange={(v) => setAccordionDefaults(v)} >
-                {Array.from(categories.current).map(([categoryID, categoryName]) => (     
-                    <AccordionItem key={"item-" + categoryID.toString()} className="border-0 border-primary mb-4 p-4 rounded bg-gray-100" value={categoryName + "-" + categoryID.toString()} disabled={deleteExistingCategories.current.has(categoryID)}>
-                        {editMode ? 
-                            <div className="flex gap-2 items-center mb-2">
-                                {categoryID < 0 ? 
-                                    <Button key={"new-category" + categoryID.toString()} className="bg-red-600 hover:bg-red-500" onClick={() => deleteNewCategory(categoryID, categoryName)}>Delete</Button> :
-                                    <Checkbox id={"existing-category-cb-" + categoryID.toString()} className="border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onCheckedChange={(val) => addExisitingCategoryToDelete(categoryID, Boolean(val))} />
-                                }
-                                <Input id={"existing-category-" + categoryID.toString()} className={`${deleteExistingCategories.current.has(categoryID) ? "border border-red-600 text-red-600" : "border border-gray-400"}`} defaultValue={categoryName} onChange={(e) => changeCategoryName(categoryID, e.target.value)} disabled={deleteExistingCategories.current.has(categoryID)}/>
-                            </div> : <Label className="text-3xl mb-2">{categoryName}</Label>
-                        }
-                        <AccordionTrigger key={"existing-category-" + categoryID.toString()} className="text-2xl bg-primary rounded-t-lg p-2 text-primary-foreground">
-                        </AccordionTrigger>
-                        <AccordionContent key={"category-content-" + categoryID.toString()} className="p-2 bg-secondary rounded-b-lg">
-                            <Table key={"table-" + categoryID.toString()}>
-                                <TableBody key={"tablebody-" + categoryID.toString()}>
-                                    {Array.from(wordBank.current.get(categoryID) ?? []).map(([wordID, wordPhrase]) => (
-                                        <TableRow key={"existing-row-" + wordID.toString()} className="border-b border-neutral-400">
-                                            <TableCell key={"existing-cell-1-" + wordID.toString()}>
-                                                {editMode ? <span id={"existing-span-" + wordID.toString()} className="flex gap-2 items-center"> 
-                                                    <Checkbox id={"existing-cb-" + categoryID.toString() + wordID.toString()} className="border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onCheckedChange={(val) => modifyDeleteWordPhrases(categoryID, wordID, Boolean(val))} disabled={deleteExistingCategories.current.has(categoryID)}/>
-                                                    <Input id={"existing-input-" + categoryID.toString() + wordID.toString()} className={`${deleteExistingWordPhrases.current.get(categoryID)?.has(wordID) || deleteExistingCategories.current.has(categoryID) ? "border-red-600 text-red-600" : "border-gray-400"}`} defaultValue={wordPhrase} onChange={(e) => changeExisitingWordPhrase(categoryID, wordID, e.target.value)} disabled={deleteExistingWordPhrases.current.get(categoryID)?.has(wordID) || deleteExistingCategories.current.has(categoryID)}/> </span> : wordPhrase
-                                                }
-                                                
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+            {categories.current.size == 0 ? 
+            
+                <div>No saved word-phrases yet!</div> : 
+            
+                <Accordion type="multiple" value={accordionDefaults} onValueChange={(v) => setAccordionDefaults(v)} >
+                    {Array.from(categories.current).map(([categoryID, categoryName]) => (     
+                        <AccordionItem key={"item-" + categoryID.toString()} className="border-0 border-primary mb-4 p-4 rounded bg-gray-100" value={categoryName + "-" + categoryID.toString()} disabled={deleteExistingCategories.current.has(categoryID)}>
+                            {editMode ? 
+                                <div className="flex gap-2 items-center mb-2">
+                                    {categoryID < 0 ? 
+                                        <Button key={"new-category" + categoryID.toString()} className="bg-red-600 hover:bg-red-500" size="sm" onClick={() => deleteNewCategory(categoryID, categoryName)}>Delete</Button> :
+                                        <Checkbox id={"existing-category-cb-" + categoryID.toString()} className="border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onCheckedChange={(val) => addExisitingCategoryToDelete(categoryID, Boolean(val))} />
+                                    }
+                                    <Input id={"existing-category-" + categoryID.toString()} className={`${deleteExistingCategories.current.has(categoryID) ? "border border-red-600 text-red-600" : "border border-gray-400"}`} defaultValue={categoryName} onChange={(e) => changeCategoryName(categoryID, e.target.value)} disabled={deleteExistingCategories.current.has(categoryID)}/>
+                                </div> : <Label className="text-3xl mb-2">{categoryName}</Label>
+                            }
+                            <AccordionTrigger key={"existing-category-" + categoryID.toString()} className="text-2xl bg-primary rounded-t-lg p-2 text-primary-foreground">
+                            </AccordionTrigger>
+                            <AccordionContent key={"category-content-" + categoryID.toString()} className="p-2 bg-secondary rounded-b-lg">
+                                <Table key={"table-" + categoryID.toString()}>
+                                    <TableBody key={"tablebody-" + categoryID.toString()}>
+                                        {Array.from(wordBank.current.get(categoryID) ?? []).map(([wordID, wordPhrase]) => (
+                                            <TableRow key={"existing-row-" + wordID.toString()} className="border-b border-neutral-400">
+                                                <TableCell key={"existing-cell-1-" + wordID.toString()}>
+                                                    {editMode ? <span id={"existing-span-" + wordID.toString()} className="flex gap-2 items-center"> 
+                                                        <Checkbox id={"existing-cb-" + categoryID.toString() + wordID.toString()} className="border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onCheckedChange={(val) => modifyDeleteWordPhrases(categoryID, wordID, Boolean(val))} disabled={deleteExistingCategories.current.has(categoryID)}/>
+                                                        <Input id={"existing-input-" + categoryID.toString() + wordID.toString()} className={`${deleteExistingWordPhrases.current.get(categoryID)?.has(wordID) || deleteExistingCategories.current.has(categoryID) ? "border-red-600 text-red-600" : "border-gray-400"}`} defaultValue={wordPhrase} onChange={(e) => changeExisitingWordPhrase(categoryID, wordID, e.target.value)} disabled={deleteExistingWordPhrases.current.get(categoryID)?.has(wordID) || deleteExistingCategories.current.has(categoryID)}/> </span> : wordPhrase
+                                                    }
+                                                    
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
 
-                                    {Array.from(newWordPhrases.current.get(categoryID) || []).map((newWordPhrase, index) => (
-                                        <TableRow key={"new-row-" + index.toString()} className="border-b border-neutral-400">
-                                            <TableCell key={"new-cell-1-" + index.toString()}>
-                                                <span id={"new-span-" + index.toString()} className="flex gap-2 items-center">
-                                                    <Button key={"new-del-" + categoryID.toString() + index.toString()} className="bg-red-600 hover:bg-red-500" onClick={() => deleteNewWordPhrase(categoryID, index)}>Delete</Button>
-                                                    <Input id={"new-input-" + categoryID.toString() + index.toString()} placeholder="Enter word/phrase here... " defaultValue={newWordPhrase} onChange={e => changeNewWordPhrase(categoryID, index, e.target.value)}/> 
-                                                </span>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                            {editMode && <Button key={"add-new-" + categoryID.toString()} className="w-full bg-green-700 hover:bg-green-600" onClick={() => addNewWordPhrase(categoryID)} disabled={deleteExistingCategories.current.has(categoryID)}>Add</Button>}
-                        </AccordionContent>
-                    </AccordionItem>
-                ))}
-            </Accordion>
+                                        {Array.from(newWordPhrases.current.get(categoryID) || []).map((newWordPhrase, index) => (
+                                            <TableRow key={"new-row-" + index.toString()} className="border-b border-neutral-400">
+                                                <TableCell key={"new-cell-1-" + index.toString()}>
+                                                    <span id={"new-span-" + index.toString()} className="flex gap-2 items-center">
+                                                        <Button key={"new-del-" + categoryID.toString() + index.toString()} className="bg-red-600 hover:bg-red-500" size="sm" onClick={() => deleteNewWordPhrase(categoryID, index)}>Delete</Button>
+                                                        <Input id={"new-input-" + categoryID.toString() + index.toString()} placeholder="Enter word/phrase here... " defaultValue={newWordPhrase} onChange={e => changeNewWordPhrase(categoryID, index, e.target.value)}/> 
+                                                    </span>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                                {editMode && <Button key={"add-new-" + categoryID.toString()} className="w-full bg-green-700 hover:bg-green-600" onClick={() => addNewWordPhrase(categoryID)} disabled={deleteExistingCategories.current.has(categoryID)}>Add</Button>}
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
+            }
         </div>
     )
 }
