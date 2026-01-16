@@ -1,0 +1,1 @@
+ALTER TABLE user_vocabulary ADD CONSTRAINT unique_user_word UNIQUE (user_id, word_id);
