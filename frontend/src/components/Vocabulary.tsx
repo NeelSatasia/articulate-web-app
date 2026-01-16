@@ -1,36 +1,41 @@
-import api from "@/api";
-import { useEffect, useRef, useState } from "react";
-import { Navigate } from "react-router-dom";
-import Loading from "./Loading";
-import { falseStr, isAuth, trueStr, type VocabularyWord } from "../commons";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import api from "@/api"
+import { useEffect, useRef, useState } from "react"
+import { Navigate } from "react-router-dom"
+import Loading from "./Loading"
+import { falseStr, isAuth, trueStr, type VocabularyWord } from "../commons"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
+import { Button } from "./ui/button"
+import { Input } from "./ui/input"
+import { Spinner } from "./ui/spinner"
+import { Checkbox } from "./ui/checkbox"
 
 const Vocabulary = () => {
 
-    const [vocabulary, setVocabulary] = useState<VocabularyWord[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
+    const [vocabulary, setVocabulary] = useState<VocabularyWord[]>([])
+    const [loading, setLoading] = useState<boolean>(true)
     const [newWord, setNewWord] = useState<string>("")
+    const [addWordLoading, setAddWordLoading] = useState<boolean>(false)
+    const [delWordsLoading, setDelWordsLoading] = useState<boolean>(false)
+    const toBeDeleted = useRef<Set<number>>(new Set())
 
     useEffect(() => {
         const fetchVocabulary = async () => {
             try {
                 if (localStorage.getItem(isAuth) === trueStr) {
-                    const resp = await api.get("/vocabulary");
+                    const resp = await api.get("/vocabulary")
                     
-                    localStorage.setItem(isAuth, trueStr);
-                    setVocabulary(resp.data);
+                    localStorage.setItem(isAuth, trueStr)
+                    setVocabulary(resp.data)
                 }
             } catch (error) {
-                console.error("Error fetching vocabulary", error);
+                console.error("Error fetching vocabulary", error)
             } finally {
-                setLoading(false);
+                setLoading(false)
             }
         }
 
-        fetchVocabulary();
-    }, []);
+        fetchVocabulary()
+    }, [])
 
     const addNewVocabularyWord = async () => {
 
@@ -43,34 +48,51 @@ const Vocabulary = () => {
         if (newWord.length > 0 && newWord.length <= 20) {
             try {
                 if (localStorage.getItem(isAuth) === trueStr) {
-                    const resp = await api.get("/vocabulary-word/" + newWord);
+                    setAddWordLoading(true)
+                    const resp = await api.get("/ai/vocabulary-word/" + newWord)
                     
-                    localStorage.setItem(isAuth, trueStr);
+                    localStorage.setItem(isAuth, trueStr)
                     
-                    setVocabulary(prev => [...prev, resp.data]);
+                    setVocabulary(prev => [...prev, resp.data[0]])
                 }
             } catch (error) {
-                console.error("Error fetching vocabulary", error);
+                console.error("Error fetching vocabulary", error)
             } finally {
-                setLoading(false);
+                setAddWordLoading(false)
             }
         }
     }
 
-    const deleteWord = async (del_word_id: number) => {
+    const deleteWords = async () => {
+
+        if (toBeDeleted.current.size == 0) {
+            return
+        }
+
         try {
-            setLoading(true)
-            await api.delete('/vocabulary', { data: { word_id: del_word_id } });
-            setVocabulary(prevVocab => prevVocab.filter(word => word.word_id !== del_word_id))
+            setDelWordsLoading(true)
+
+            await api.delete('/vocabulary', { data: Array.from(toBeDeleted.current) })
+
+            const updated = []
+
+            for (const vocabWord of vocabulary) {
+                if (!toBeDeleted.current.has(vocabWord.word_id)) {
+                    updated.push(vocabWord)
+                }
+            }
+
+            toBeDeleted.current.clear()
+            setVocabulary(updated)
         } catch (error) {
-            console.error("Error deleting vocabulary word", error);
+            console.error("Error deleting vocabulary word", error)
         } finally {
-            setLoading(false);
+            setDelWordsLoading(false)
         }
     }
 
     if (loading) {
-        return <Loading spinnerAction="Loading"/>;
+        return <Loading spinnerAction="Loading"/>
     }
 
     if (localStorage.getItem(isAuth) === falseStr) {
@@ -82,7 +104,7 @@ const Vocabulary = () => {
             <h1 className="text-3xl mb-4">Your Vocabulary</h1>
 
             <div className="flex gap-x-2">
-                <Button key="add-new-vocabulary-word" onClick={addNewVocabularyWord}>Add</Button>
+                {addWordLoading ? <Spinner /> : <Button key="add-new-vocabulary-word" onClick={addNewVocabularyWord} disabled={delWordsLoading} >Add</Button>}
 
                 <Input 
                     id="new-vocabulary-word-input" 
@@ -106,7 +128,9 @@ const Vocabulary = () => {
                             <TableRow className="bg-neutral-300 hover:bg-neutral-300 rounded">
                                 <TableHead className="w-1/4">Word</TableHead>
                                 <TableHead className="w-2/4">Definition</TableHead>
-                                <TableHead></TableHead>
+                                <TableHead>
+                                    {delWordsLoading ? <Spinner /> : <Button key="delete-selected-words" className="bg-red-700 hover:bg-red-600" size="sm" onClick={deleteWords} disabled={addWordLoading}>Delete</Button>}
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody key="vocabulary-content">
@@ -119,9 +143,7 @@ const Vocabulary = () => {
                                         {vocabWord.definition}
                                     </TableCell>
                                     <TableCell className="rounded-r-md">
-                                        <Button onClick={() => deleteWord(vocabWord.word_id)} className="bg-red-400 hover:bg-red-500 text-white">
-                                            Delete
-                                        </Button>
+                                        <Checkbox key={"delete-word-option" + vocabWord.word_id} className="border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onCheckedChange={(val) => {if (Boolean(val)) {toBeDeleted.current.add(vocabWord.word_id)} else {toBeDeleted.current.delete(vocabWord.word_id)}} } disabled={addWordLoading || delWordsLoading} />
                                     </TableCell>
                                 </TableRow>
                             ))}
