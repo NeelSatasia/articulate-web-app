@@ -94,7 +94,7 @@ const WordBank = () => {
 
         newWordPhrases.current.get(categoryID)?.push("")
 
-        setManualRendersCount(manualRendersCount + 1)
+        setManualRendersCount(prev => prev + 1)
 
     }
 
@@ -109,7 +109,7 @@ const WordBank = () => {
             newWordPhrases.current.delete(categoryID)
         }
 
-        setManualRendersCount(manualRendersCount + 1)
+        setManualRendersCount(prev => prev + 1)
     }
 
     const modifyDeleteWordPhrases = (categoryID: number, wordID: number, newVal: boolean) => {
