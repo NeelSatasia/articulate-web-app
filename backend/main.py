@@ -2,7 +2,7 @@ from fastapi import FastAPI
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from routers import users, wordbank, auth, vocabulary, ai
+from routers import users, wordbank, auth, vocabulary, ai, prompts
 from dotenv import load_dotenv
 import os
 
@@ -33,6 +33,7 @@ app.include_router(users.router)
 app.include_router(wordbank.router)
 app.include_router(vocabulary.router)
 app.include_router(ai.router)
+app.include_router(prompts.router)
 
 
 if __name__ == "__main__":
