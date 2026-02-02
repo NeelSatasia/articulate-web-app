@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard.tsx'
 import Vocabulary from './components/Vocabulary.tsx'
 import Layout from './components/Layout.tsx'
 import RewritePhrases from './components/RewritePhrases.tsx'
+import EssenceWriting from './components/EssenceWriting.tsx'
 
 const router = createBrowserRouter([
   {path: "/", element: <App />},
@@ -17,13 +18,14 @@ const router = createBrowserRouter([
       { index: true, path: "dashboard", element: <Dashboard /> },
       { path: "wordbank", element: <WordBank /> },
       { path: "vocabulary", element: <Vocabulary /> },
-      { path: "rewritephrases", element: <RewritePhrases /> }
+      { path: "sentence-crafting", element: <RewritePhrases /> },
+      { path: "essence-writing", element: <EssenceWriting />}
     ]
   }
 ])
 
 createRoot(document.getElementById('root')!).render(
-    <StrictMode>
+    
         <RouterProvider router={router} />
-    </StrictMode>,
+    
 )
