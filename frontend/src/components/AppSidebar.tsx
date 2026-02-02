@@ -71,7 +71,13 @@ const AppSidebar = () => {
                                         <SidebarMenuSub>
                                             <SidebarMenuSubItem>
                                                 <SidebarMenuButton asChild>
-                                                    <Link to="/rewritephrases">Sentence Crafting</Link>
+                                                    <Link to="/sentence-crafting">Sentence Crafting</Link>
+                                                </SidebarMenuButton>
+                                            </SidebarMenuSubItem>
+
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuButton asChild>
+                                                    <Link to="/essence-writing">Essence Writing</Link>
                                                 </SidebarMenuButton>
                                             </SidebarMenuSubItem>
                                         </SidebarMenuSub>
@@ -85,7 +91,7 @@ const AppSidebar = () => {
             </SidebarContent>
 
             <SidebarFooter>
-                <Button key="logout-btn" className="bg-red-700 hover:bg-red-400" onClick={logoutUser}>Logout</Button>
+                <Button key="logout-btn" className="bg-red-600 hover:bg-red-500" size="sm" onClick={logoutUser}>Logout</Button>
             </SidebarFooter>
         </Sidebar>
     )
