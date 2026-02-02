@@ -48,3 +48,8 @@ export interface GrammarMistakeGroup {
 export interface GrammarCheckResponse {
     grammar_check: GrammarMistakeGroup[]
 }
+
+export interface PromptInfo {
+    prompt_id: number
+    prompt: string
+}
