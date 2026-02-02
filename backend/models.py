@@ -31,3 +31,7 @@ class WordInfo(BaseModel):
     word: str
     definition: str
     cefr_level: str
+
+class PromptInfo(BaseModel):
+    prompt_id: int
+    prompt: str
