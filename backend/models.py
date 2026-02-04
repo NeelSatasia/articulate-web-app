@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, List
 
 class User(BaseModel):
     user_name: str
@@ -32,6 +32,17 @@ class WordInfo(BaseModel):
     definition: str
     cefr_level: str
 
+class WordBatchResponse(BaseModel):
+    words: List[WordInfo]
+
+class VocabularyBatchRequest(BaseModel):
+    words: List[str]
+
 class PromptInfo(BaseModel):
     prompt_id: int
     prompt: str
+
+class EssenceWritingReponse(BaseModel):
+    words_100: str
+    words_50: str
+    words_25: str
