@@ -16,6 +16,7 @@ const Vocabulary = () => {
     const [newWord, setNewWord] = useState<string>("")
     const [addWordLoading, setAddWordLoading] = useState<boolean>(false)
     const [delWordsLoading, setDelWordsLoading] = useState<boolean>(false)
+    const [newVocabWords, setNewVocabWords] = useState<Set<string>>(new Set())
     const toBeDeleted = useRef<Set<number>>(new Set())
 
     useEffect(() => {
@@ -37,7 +38,11 @@ const Vocabulary = () => {
         fetchVocabulary()
     }, [])
 
-    const addNewVocabularyWord = async () => {
+    const addNewVocabularyWordToList = () => {
+
+        if (newWord.length === 0) {
+            return
+        }
 
         for (const vWord of vocabulary) {
             if (vWord.word === newWord) {
@@ -45,18 +50,29 @@ const Vocabulary = () => {
             }
         }
 
-        if (newWord.length > 0 && newWord.length <= 20) {
+        setNewVocabWords(prev => {
+            const updated = new Set(prev)
+            updated.add(newWord)
+            return updated
+        })
+    }
+
+    const addNewVocabularyWords = async () => {
+
+        if (newVocabWords.size > 0) {
             try {
                 if (localStorage.getItem(isAuth) === trueStr) {
                     setAddWordLoading(true)
-                    const resp = await api.get("/ai/vocabulary-word/" + newWord)
+                    const resp = await api.post<VocabularyWord[]>("/ai/vocabulary-words/batch", {words: Array.from(newVocabWords)})
                     
                     localStorage.setItem(isAuth, trueStr)
                     
-                    setVocabulary(prev => [...prev, resp.data[0]])
+                    setVocabulary(prev => [...prev, ...resp.data])
+                    setNewVocabWords(new Set())
+                    setNewWord("")
                 }
             } catch (error) {
-                console.error("Error fetching vocabulary", error)
+                console.error("Error adding new vocabulary words", error)
             } finally {
                 setAddWordLoading(false)
             }
@@ -91,6 +107,14 @@ const Vocabulary = () => {
         }
     }
 
+    const deleteNewWord = (newWordToDelete: string) => {
+        setNewVocabWords(prev => {
+            const updated = new Set(prev)
+            updated.delete(newWordToDelete)
+            return updated
+        })
+    }
+
     if (loading) {
         return <Loading spinnerAction="Loading"/>
     }
@@ -104,11 +128,11 @@ const Vocabulary = () => {
             <h1 className="text-3xl mb-4">Your Vocabulary</h1>
 
             <div className="flex gap-x-2">
-                {addWordLoading ? <Spinner /> : <Button key="add-new-vocabulary-word" onClick={addNewVocabularyWord} disabled={delWordsLoading} >Add</Button>}
+                {addWordLoading ? <Spinner /> : <Button key="add-new-vocabulary-word" onClick={addNewVocabularyWordToList} disabled={delWordsLoading} >Add</Button>}
 
                 <Input 
                     id="new-vocabulary-word-input" 
-                    placeholder="Search a new word here" 
+                    placeholder="Type a new word here" 
                     type="text" value={newWord} 
                     onChange={(e) => {
                         if (!e.target.value.includes(' ') && !/\d/.test(e.target.value) && !/[^a-zA-Z0-9]/.test(e.target.value)) {
@@ -116,8 +140,17 @@ const Vocabulary = () => {
                         }
                     }} />
 
-            
+                
             </div>
+
+            {newVocabWords.size > 0 && 
+            <div className="flex justify-center">
+                {Array.from(newVocabWords).map(word => (
+                    <Button key={word} size="sm" className="mr-2 bg-white hover:bg-white text-color-primary hover:line-through border border-black" onClick={() => deleteNewWord(word)}>{word}</Button>
+                ))}
+            </div>}
+
+            {newVocabWords.size > 0 && <Button key="get-definitions-btn" onClick={addNewVocabularyWords}>Get Definitions</Button>}
 
             {vocabulary.length === 0 ? (
                 <div className="w-full h-full justify-center items-center">You have no vocabulary words yet.</div>
