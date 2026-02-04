@@ -3,8 +3,9 @@ from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
 from userclient import get_user_client
-from models import GrammarReview, WordInfo
+from models import GrammarReview, WordBatchResponse, VocabularyBatchRequest, EssenceWritingReponse
 from fastapi.concurrency import run_in_threadpool
+from scipy import spatial
 
 load_dotenv()
 
@@ -118,47 +119,107 @@ async def user_sentence_review(user_sentence: str, generated_sentence_id: int, s
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
 
-@router.get("/vocabulary-word/{word}")
-async def vocabulary_word(word: str, request: Request, supabase=Depends(get_user_client)):
+# POST ---------------------------------------------------------------------------------------------------------------------------------------
 
+@router.post("/vocabulary-words/batch")
+async def vocabulary_words(
+    payload: VocabularyBatchRequest, 
+    request: Request, 
+    supabase=Depends(get_user_client)
+):
     user = request.session.get('user')
 
-    cleaned_word = word.strip().lower()
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
-    if len(cleaned_word) == 0 or len(cleaned_word) > 20 or len(cleaned_word.split(" ")) > 1 or cleaned_word.isalpha() == False:
-        return []
+    cleaned_words = set()
+    for w in payload.words:
+        cleaned = w.strip().lower()
+        if 0 < len(cleaned) <= 25 and cleaned.isalpha():
+            cleaned_words.add(cleaned)
     
-    try:
-
-        word_exists = await run_in_threadpool(lambda: supabase.table("vocabulary_words").select("*").eq("word", cleaned_word).execute())
-
-        if len(word_exists.data) > 0:
-            await run_in_threadpool(lambda: supabase.table("user_vocabulary").insert({"user_id": user["user_id"], "word_id": word_exists.data[0]["word_id"]}).execute())
-            return word_exists.data
-
-        prompt = f"""
-            First, check if the given word ({cleaned_word}) is valid, appropriate, and not abusive.
-            If true, return the word, its definition, and CEFR level; otherwise return []
-        """
-
-        word_result = await openai_client.responses.parse(
-                model="gpt-4.1-mini-2025-04-14",
-                input=prompt,
-                text_format=WordInfo
-            )
-        
-        if word_result.output_parsed:
-            cefr_conversion = {"A1": 1, "A2": 2, "B1": 3, "B2": 4, "C1": 5, "C2": 6}
-
-            result = await run_in_threadpool(lambda: supabase.table("vocabulary_words").insert({"word": word_result.output_parsed.word, "definition": word_result.output_parsed.definition, "word_level": cefr_conversion[word_result.output_parsed.cefr_level]}).execute())
-
-            if result:
-                await run_in_threadpool(lambda: supabase.table("user_vocabulary").insert({"user_id": user["user_id"], "word_id": result.data[0]["word_id"]}).execute())
-                return result.data
-        
+    if not cleaned_words:
         return []
+
+    try:
+        existing_result = await run_in_threadpool(
+            lambda: supabase.table("vocabulary_words")
+            .select("*")
+            .in_("word", list(cleaned_words))
+            .execute()
+        )
         
+        existing_words_data = existing_result.data 
+        found_word_strings = {row['word'] for row in existing_words_data}
+        
+        missing_words = list(cleaned_words - found_word_strings)
+        newly_inserted_words = []
+
+        if missing_words:
+            prompt = f"""
+            Analyze the following list of words: {', '.join(missing_words)}.
+            For each VALID English word, provide the word, a concise definition, and its CEFR level (A1, A2, B1, B2, C1, C2).
+            Ignore invalid words, names, or gibberish.
+            """
+
+            ai_response = await openai_client.beta.chat.completions.parse(
+                model="gpt-4.1-mini-2025-04-14",
+                messages=[{"role": "user", "content": prompt}],
+                response_format=WordBatchResponse
+            )
+            
+            generated_data = ai_response.choices[0].message.parsed.words
+
+            if generated_data:
+                cefr_map = {"A1": 1, "A2": 2, "B1": 3, "B2": 4, "C1": 5, "C2": 6}
+                words_to_insert = []
+                
+                for item in generated_data:
+                    words_to_insert.append({
+                        "word": item.word.lower(), 
+                        "definition": item.definition,
+                        "word_level": cefr_map.get(item.cefr_level.upper(), 3) 
+                    })
+
+                insert_result = await run_in_threadpool(
+                    lambda: supabase.table("vocabulary_words")
+                    .insert(words_to_insert)
+                    .execute()
+                )
+                newly_inserted_words = insert_result.data
+
+        all_words = existing_words_data + newly_inserted_words
+        
+        if not all_words:
+            return []
+
+        user_vocab_entries = [
+            {"user_id": user["user_id"], "word_id": w["word_id"]} 
+            for w in all_words
+        ]
+
+        await run_in_threadpool(
+            lambda: supabase.table("user_vocabulary")
+            .upsert(user_vocab_entries, on_conflict="user_id, word_id", ignore_duplicates=True)
+            .execute()
+        )
+
+        return all_words
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+
+@router.post("/essence-writing-check")
+async def essence_writing_check(user_response: EssenceWritingReponse, supabase=Depends(get_user_client)):
+    generated_embeddings = await openai_client.embeddings.create(
+        input=[user_response.words_100, user_response.words_50, user_response.words_25],
+        model="text-embedding-3-small"
+    )
+
+    res_12 = 1 - spatial.distance.cosine(generated_embeddings.data[0].embedding, generated_embeddings.data[1].embedding)
+    res_23 = 1 - spatial.distance.cosine(generated_embeddings.data[1].embedding, generated_embeddings.data[2].embedding)
+    res_13 = 1 - spatial.distance.cosine(generated_embeddings.data[0].embedding, generated_embeddings.data[2].embedding)
+
+    return [res_12, res_23, res_13]
