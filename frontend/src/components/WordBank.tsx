@@ -408,7 +408,7 @@ const WordBank = () => {
 
             {categories.current.size == 0 ? 
             
-                <div>No saved word-phrases yet!</div> : 
+                <div>Your commonplace book is currently empty!</div> : 
             
                 <Accordion type="multiple" value={accordionDefaults} onValueChange={(v) => setAccordionDefaults(v)} >
                     {Array.from(categories.current).map(([categoryID, categoryName]) => (     
