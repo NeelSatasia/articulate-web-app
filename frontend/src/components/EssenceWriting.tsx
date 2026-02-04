@@ -5,6 +5,7 @@ import { Button } from "./ui/button"
 import { isAuth, loadingStr, trueStr, type PromptInfo } from "../commons"
 import api from "../api"
 import Loading from "./Loading"
+import { Spinner } from "./ui/spinner"
 
 const EssenceWriting = () => {
 
@@ -24,6 +25,9 @@ const EssenceWriting = () => {
 
     const timerID = useRef<number | null>(null)
 
+    const [loadingResult, setLoadingResult] = useState<boolean>(false)
+
+    const [similarityResults, setSimilarityResults] = useState<number[] | null>(null)
 
     useEffect(() => {
         const getPrompts = async () => {
@@ -55,6 +59,7 @@ const EssenceWriting = () => {
                     setPanel(3)
                 } else {
                     resetWriting()
+                    setPanel(4)
                     return
                 }
             }
@@ -63,6 +68,10 @@ const EssenceWriting = () => {
 
 
     const getNextPrompt = () => {
+        if (similarityResults !== null) {
+            setSimilarityResults(null)
+        }
+
         if (currPromptIdx + 1 < prompts.length) {
             setCurrPromptIdx(prev => prev + 1)
         } else {
@@ -72,6 +81,10 @@ const EssenceWriting = () => {
 
     const startWriting = () => {
         if (!writing) {
+
+            setWords100("")
+            setWords50("")
+            setWords25("")
             
             setWriting(true)
             setTimeLeft(180)
@@ -82,6 +95,7 @@ const EssenceWriting = () => {
             }, 1000)
         } else {
             resetWriting()
+            setPanel(0)
         }
     }
 
@@ -89,9 +103,32 @@ const EssenceWriting = () => {
         if (timerID.current) {
             clearInterval(timerID.current)
         }
-        setPanel(0)
+        
         setWriting(false)
         setTimeLeft(180)
+    }
+
+    const checkSimilarity = async () => {
+        try {
+            setLoadingResult(true)
+
+            if (localStorage.getItem(isAuth) === trueStr) {
+                const jsonData: Record<string, string> = {
+                    words_100: words100,
+                    words_50: words50,
+                    words_25: words25
+                }
+                const resp = await api.post("/ai/essence-writing-check", jsonData)
+                
+                localStorage.setItem(isAuth, trueStr)
+                setSimilarityResults(resp.data)
+                setPanel(0)
+            }
+        } catch (error) {
+            console.error("Error checking results", error)
+        } finally {
+            setLoadingResult(false)
+        }
     }
 
     if (loading) {
@@ -105,7 +142,7 @@ const EssenceWriting = () => {
             <div className="flex flex-col justify-center items-center gap-y-4">
                 <Button className="w-fit" onClick={getNextPrompt} disabled={panel > 0}>Next Prompt</Button>
                 <p>{prompts[currPromptIdx].prompt}</p>
-                <Button key="start-writing-btn" className={`${writing ? "bg-red-500 hover:bg-red-400" : "bg-primary"} w-fit`} onClick={startWriting}>
+                <Button key="start-writing-btn" className={`${writing ? "bg-red-500 hover:bg-red-400" : "bg-orange-500 hover:bg-orange-400"} w-fit mt-10`} onClick={startWriting}>
                     {writing ? "Cancel" : "Start"}
                 </Button>
             </div>
@@ -138,7 +175,15 @@ const EssenceWriting = () => {
             </div>
 
             <div className="flex justify-center">
-                <Button className="w-fit bg-emerald-600 hover:bg-emerald-500">Submit</Button>
+                {loadingResult ? <Spinner /> : 
+                    similarityResults === null ?
+                    <Button className="w-fit bg-emerald-600 hover:bg-emerald-500" onClick={checkSimilarity} disabled={panel !== 4}>Submit</Button> : 
+                    <div className="flex flex-col justify-center items-center">
+                        <Label>{similarityResults[0]}</Label>
+                        <Label>{similarityResults[1]}</Label>
+                        <Label>{similarityResults[2]}</Label>
+                    </div>
+                }
             </div>
         </div>
     )
