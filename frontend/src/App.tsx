@@ -11,7 +11,7 @@ function App() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-800">
-            <h1 className="text-7xl mb-10 text-secondary">Become Articulate</h1>
+            <h1 className="text-7xl mb-10 text-secondary italic font-serif bg-gradient-to-r from-orange-600 to-violet-400 text-transparent bg-clip-text">Become Articulate</h1>
             <div className="bg-gray-200 p-10 rounded-xl shadow-lg w-full max-w-sm text-center">
                 <h2 className="text-2xl font-bold mb-6">Welcome</h2>
                 <p className="text-gray-500 mb-6">Sign in with your Google account to continue</p>
