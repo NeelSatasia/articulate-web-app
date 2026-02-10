@@ -18,7 +18,7 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 @router.get("/generate-sentence/{phrase_id}")
 async def user_rewrite_phrases(phrase_id: int, supabase=Depends(get_user_client)):
     
-    result_phrase = supabase.table("word_bank").select("word_phrase").eq("word_id", phrase_id).execute()
+    result_phrase = await run_in_threadpool(lambda: supabase.table("word_bank").select("word_phrase").eq("word_id", phrase_id).execute())
 
     if (not result_phrase) or len(result_phrase.data) == 0:
         return { "error" : "Invalid" }
@@ -26,31 +26,14 @@ async def user_rewrite_phrases(phrase_id: int, supabase=Depends(get_user_client)
     try:
         prompt = f"Generate a sentence that excludes the phrase ({result_phrase.data[0]["word_phrase"]}) but naturally encourages its use when the sentence is rewritten."
         
-        num_calls = 0
+        generated_text = await openai_client.responses.create(
+            model="gpt-4.1-mini-2025-04-14",
+            input=prompt
+        )
 
-        while num_calls < 3:
-
-            generated_text = await openai_client.responses.create(
-                model="gpt-4.1-mini-2025-04-14",
-                input=prompt
-            )
-
-            generated_embeddings = await openai_client.embeddings.create(
-                input=generated_text.output_text,
-                model="text-embedding-3-small"
-            )
-
-            new_embed_id = await run_in_threadpool(lambda: supabase.rpc("unique_generated_sentence", { "p_word_id": phrase_id, "p_embedding": generated_embeddings.data[0].embedding }).execute())
-
-            if new_embed_id.data > -1:
-                return { 
-                    "sentence": generated_text.output_text, 
-                    "new_embed_id": new_embed_id.data 
-                }
-
-            num_calls += 1
-
-        return {"error": "Failed to generate a unique sentence. Try again."}
+        return { 
+            "sentence": generated_text.output_text
+        }
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -104,19 +87,45 @@ async def grammar_check(user_sentence: str, supabase=Depends(get_user_client)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/review-user-response/{user_sentence}/{generated_sentence_id}")
-async def user_sentence_review(user_sentence: str, generated_sentence_id: int, supabase=Depends(get_user_client)):
+@router.get("/review-user-response/{user_sentence}/{generated_sentence}")
+async def user_sentence_review(user_sentence: str, generated_sentence: str, supabase=Depends(get_user_client)):
+
+    if user_sentence.strip() == "" or generated_sentence.strip() == "":
+        return { "similarity" : 0.0 }
 
     try:
         generated_embeddings = await openai_client.embeddings.create(
-            input=user_sentence.strip(),
+            input=[user_sentence.strip(), generated_sentence.strip()],
             model="text-embedding-3-small"
         )
         
-        similarity_result = await run_in_threadpool(lambda: supabase.rpc("check_similarity_for_user_sentence", { "p_embed_id": generated_sentence_id, "p_embedding": generated_embeddings.data[0].embedding }).execute())
-        
-        return { "similarity": similarity_result.data }
+        similarity_result = 1 - spatial.distance.cosine(generated_embeddings.data[0].embedding, generated_embeddings.data[1].embedding)
+
+        return { "similarity": similarity_result }
     
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+@router.get("/generate-sentence-for-word/{vocabulary_word}")
+async def generate_sentence_for_word(vocabulary_word: str, supabase=Depends(get_user_client)):
+
+    if vocabulary_word.strip() == "" or vocabulary_word.isalpha() == False or vocabulary_word.strip().split(' ') > 1:
+        return
+    
+    prompt = f"Generate a sentence that carries the meaning of {vocabulary_word.strip()} without using the word itself"
+
+    try:
+    
+        generated_text = await openai_client.responses.create(
+            model="gpt-4.1-mini-2025-04-14",
+            input=prompt
+        )
+
+        if generated_text:
+            return { "sentence": generated_text.output_text }
+        
+        return { "sentence": "" }
+        
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -143,12 +152,7 @@ async def vocabulary_words(
         return []
 
     try:
-        existing_result = await run_in_threadpool(
-            lambda: supabase.table("vocabulary_words")
-            .select("*")
-            .in_("word", list(cleaned_words))
-            .execute()
-        )
+        existing_result = await run_in_threadpool(lambda: supabase.table("vocabulary_words").select("*").in_("word", list(cleaned_words)).execute())
         
         existing_words_data = existing_result.data 
         found_word_strings = {row['word'] for row in existing_words_data}
@@ -222,4 +226,4 @@ async def essence_writing_check(user_response: EssenceWritingReponse, supabase=D
     res_23 = 1 - spatial.distance.cosine(generated_embeddings.data[1].embedding, generated_embeddings.data[2].embedding)
     res_13 = 1 - spatial.distance.cosine(generated_embeddings.data[0].embedding, generated_embeddings.data[2].embedding)
 
-    return [res_12, res_23, res_13]
+    return [round((res_12 + res_13) / 2, 4), round((res_12 + res_23) / 2, 4), round((res_23 + res_13) / 2, 4)]
