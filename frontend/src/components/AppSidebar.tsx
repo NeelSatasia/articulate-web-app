@@ -77,6 +77,12 @@ const AppSidebar = () => {
 
                                             <SidebarMenuSubItem>
                                                 <SidebarMenuButton asChild>
+                                                    <Link to="/vocabulary-recall">Vocabulary Recall</Link>
+                                                </SidebarMenuButton>
+                                            </SidebarMenuSubItem>
+
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuButton asChild>
                                                     <Link to="/essence-writing">Essence Writing</Link>
                                                 </SidebarMenuButton>
                                             </SidebarMenuSubItem>
