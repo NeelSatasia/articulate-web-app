@@ -14,7 +14,6 @@ interface WordPhraseResponse {
     generatedSentence: string
     userSentence: string
     isSentenceGenerated: boolean
-    vectorEmbedID?: number
     isResponseReviewed: boolean
     similarity: number
     userResult: string
@@ -73,9 +72,8 @@ const RewritePhrases = () => {
             setLoadingSentence(true)
             const resp = await api.get("/ai/generate-sentence/" + wordBank.current[currentIndex].phraseID)
             
-            if (resp.data.sentence && resp.data.new_embed_id) {
+            if (resp.data.sentence) {
                 wordBank.current[currentIndex].generatedSentence = resp.data.sentence
-                wordBank.current[currentIndex].vectorEmbedID = resp.data.new_embed_id
                 wordBank.current[currentIndex].isSentenceGenerated = true
             }
             
@@ -88,9 +86,7 @@ const RewritePhrases = () => {
 
     const reviewUserResponse = async () => {
 
-        
-
-        if (wordBank.current[currentIndex].userSentence.trim().length === 0 || !wordBank.current[currentIndex].vectorEmbedID || !wordBank.current[currentIndex].userSentence.trim().toLowerCase().includes(wordBank.current[currentIndex].phrase.toLowerCase())) {
+        if (wordBank.current[currentIndex].userSentence.trim().length === 0 || !wordBank.current[currentIndex].userSentence.trim().toLowerCase().includes(wordBank.current[currentIndex].phrase.toLowerCase())) {
             wordBank.current[currentIndex].isFoundMistakes = true
             setRefresh(prev => prev + 1)
         } else {
@@ -113,7 +109,7 @@ const RewritePhrases = () => {
                 
                 if (!wordBank.current[currentIndex].isFoundMistakes) {
 
-                    const similarityResp = await api.get("/ai/review-user-response/" + wordBank.current[currentIndex].userSentence + "/" + wordBank.current[currentIndex].vectorEmbedID)
+                    const similarityResp = await api.get("/ai/review-user-response/" + wordBank.current[currentIndex].userSentence + "/" + wordBank.current[currentIndex].generatedSentence)
 
                     wordBank.current[currentIndex].isResponseReviewed = true
                     wordBank.current[currentIndex].similarity = Number((similarityResp.data["similarity"] * 100).toFixed(2))
@@ -149,7 +145,7 @@ const RewritePhrases = () => {
         <div className="flex flex-col justify-center bg-neutral-100 rounded-md m-4 p-4">
             <div className="flex justify-center mb-10">
                 <Button className="bg-zinc-500 hover:bg-neutral-400" onClick={prevWordPhrase}>Previous</Button>
-                <Button className={`${wordBank.current[currentIndex].isSentenceGenerated ? "bg-teal-600 hover:bg-teal-500" : "bg-cyan-600 hover:bg-cyan-500"} ml-4`} onClick={nextWordPhrase}>
+                <Button className={`${wordBank.current[currentIndex].isSentenceGenerated ? "bg-teal-600 hover:bg-teal-500" : "bg-amber-600 hover:bg-amber-500"} ml-4`} onClick={nextWordPhrase}>
                     {wordBank.current[currentIndex].isSentenceGenerated ? "Continue" : "Skip"}
                 </Button>
             </div>
@@ -172,7 +168,7 @@ const RewritePhrases = () => {
                     <Input
                         key="user-sentence-input"
                         type="text"
-                        placeholder="Re-phrase the sentence here..."
+                        placeholder="Rewrite the sentence using the phrase..."
                         defaultValue={wordBank.current[currentIndex].userSentence}
                         onChange={(e) => {
                             if (e.target.value.length <= 255) {
@@ -196,7 +192,6 @@ const RewritePhrases = () => {
                                 <CardContent>
                                     { wordBank.current[currentIndex].isFoundMistakes ? 
                                         <div className="text-red-600">
-                                            {!wordBank.current[currentIndex].vectorEmbedID && <p>System failure on saving the generated sentence</p>}
 
                                             {wordBank.current[currentIndex].userSentence.trim().length === 0 && <p>Empty response</p>}
 
