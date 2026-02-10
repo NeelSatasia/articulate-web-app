@@ -53,15 +53,13 @@ const EssenceWriting = () => {
             if (timeLeft === 0) {
                 if (panel === 1) {
                     setTimeLeft(120)
-                    setPanel(2)
                 } else if (panel === 2) {
                     setTimeLeft(60)
-                    setPanel(3)
                 } else {
                     resetWriting()
-                    setPanel(4)
-                    return
                 }
+
+                setPanel(prev => prev + 1)
             }
         }
     }, [timeLeft])
@@ -90,6 +88,10 @@ const EssenceWriting = () => {
             setTimeLeft(180)
             setPanel(1)
 
+            if (similarityResults) {
+                setSimilarityResults(null)
+            }
+
             timerID.current = window.setInterval(() => {
                 setTimeLeft(prev => prev - 1)
             }, 1000)
@@ -109,6 +111,10 @@ const EssenceWriting = () => {
     }
 
     const checkSimilarity = async () => {
+        if (words100.trim().length === 0 || words50.trim().length === 0 || words25.trim().length === 0) {
+            return
+        }
+
         try {
             setLoadingResult(true)
 
@@ -121,7 +127,7 @@ const EssenceWriting = () => {
                 const resp = await api.post("/ai/essence-writing-check", jsonData)
                 
                 localStorage.setItem(isAuth, trueStr)
-                setSimilarityResults(resp.data)
+                setSimilarityResults(resp.data[0])
                 setPanel(0)
             }
         } catch (error) {
@@ -140,7 +146,7 @@ const EssenceWriting = () => {
         <div className="flex flex-col gap-y-8 p-4">
 
             <div className="flex flex-col justify-center items-center gap-y-4">
-                <Button className="w-fit" onClick={getNextPrompt} disabled={panel > 0}>Next Prompt</Button>
+                <Button className="w-fit mb-10" onClick={getNextPrompt} disabled={panel > 0}>Next Prompt</Button>
                 <p>{prompts[currPromptIdx].prompt}</p>
                 <Button key="start-writing-btn" className={`${writing ? "bg-red-500 hover:bg-red-400" : "bg-orange-500 hover:bg-orange-400"} w-fit mt-10`} onClick={startWriting}>
                     {writing ? "Cancel" : "Start"}
@@ -148,7 +154,7 @@ const EssenceWriting = () => {
             </div>
 
             <div className="flex flex-col gap-y-2">
-                <Label>Time Left: {panel === 1 ? timeLeft : 0}</Label>
+                {similarityResults === null ? <Label>Time Left: {panel === 1 ? timeLeft : 0} seconds</Label> : <Label><span className={`font-bold ${similarityResults[0] <= 0.30 ? "text-red-600" : similarityResults[0] <= 0.60 ? "text-orange-600" : "text-green-600"}`}>{(similarityResults[0] * 100).toFixed(2)}%</span> match with response 2 and 3</Label>}
                 <Textarea placeholder="100 words or less" value={words100} onChange={(e) => {
                     if (e.target.value.trim().split(/\s+/).length <= 100) {
                         setWords100(e.target.value)
@@ -157,7 +163,7 @@ const EssenceWriting = () => {
             </div>
 
             <div className="flex flex-col gap-y-2">
-                <Label>Time Left: {panel === 2 ? timeLeft : 0}</Label>
+                {similarityResults === null ? <Label>Time Left: {panel === 2 ? timeLeft : 0} seconds</Label> : <Label><span className={`font-bold ${similarityResults[1] <= 0.30 ? "text-red-600" : similarityResults[0] <= 0.60 ? "text-orange-600" : "text-green-600"}`}>{(similarityResults[1] * 100).toFixed(2)}%</span> match with response 1 and 3</Label>}
                 <Textarea placeholder="50 words or less" value={words50} onChange={(e) => {
                     if (e.target.value.trim().split(/\s+/).length <= 50) {
                         setWords50(e.target.value)
@@ -166,7 +172,7 @@ const EssenceWriting = () => {
             </div>
 
             <div className="flex flex-col gap-y-2">
-                <Label>Time Left: {panel === 3 ? timeLeft : 0}</Label>
+                {similarityResults === null ? <Label>Time Left: {panel === 3 ? timeLeft : 0} seconds</Label> : <Label><span className={`font-bold ${similarityResults[2] <= 0.30 ? "text-red-600" : similarityResults[0] <= 0.60 ? "text-orange-600" : "text-green-600"}`}>{(similarityResults[2] * 100).toFixed(2)}%</span> match with response 1 and 2</Label>}
                 <Textarea placeholder="25 words or less" value={words25} onChange={(e) => {
                     if (e.target.value.trim().split(/\s+/).length <= 25) {
                         setWords25(e.target.value)
@@ -176,13 +182,8 @@ const EssenceWriting = () => {
 
             <div className="flex justify-center">
                 {loadingResult ? <Spinner /> : 
-                    similarityResults === null ?
-                    <Button className="w-fit bg-emerald-600 hover:bg-emerald-500" onClick={checkSimilarity} disabled={panel !== 4}>Submit</Button> : 
-                    <div className="flex flex-col justify-center items-center">
-                        <Label>{similarityResults[0]}</Label>
-                        <Label>{similarityResults[1]}</Label>
-                        <Label>{similarityResults[2]}</Label>
-                    </div>
+                    similarityResults === null &&
+                    <Button className="w-fit bg-emerald-600 hover:bg-emerald-500" onClick={checkSimilarity} disabled={panel !== 4}>Submit</Button>
                 }
             </div>
         </div>
