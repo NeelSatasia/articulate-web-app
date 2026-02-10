@@ -41,9 +41,18 @@ async def user_dashboard(supabase=Depends(get_user_client)):
 
     try:
         
-        #TODO: Retrieve at least 5 unique user's vocabulary words every 24 hours
+        result = await run_in_threadpool(lambda: supabase.rpc('get_daily_dashboard_content', { "target_table": "user_vocabulary", "pk_column": "vocab_word_id", "limit_count": 3 }).execute())
 
-        return []
+        if result:
+            word_ids = []
+
+            for row in result.data:
+                word_ids.append(row["word_id"])
+
+            words = await run_in_threadpool(lambda: supabase.table("vocabulary_words").select("*").in_("word_id", word_ids).execute())
+
+            if words:
+                return words.data
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

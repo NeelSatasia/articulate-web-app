@@ -46,7 +46,7 @@ async def current_word_phrases(supabase=Depends(get_user_client)):
     
     try:
 
-        result = await run_in_threadpool(lambda: supabase.rpc('get_current_dashboard_word_phrases', { "limit_count": 5 }).execute())
+        result = await run_in_threadpool(lambda: supabase.rpc('get_daily_dashboard_content', { "target_table": "word_bank", "pk_column": "word_id", "limit_count": 5 }).execute())
 
         if result:
             return result.data
