@@ -11,6 +11,7 @@ import { Spinner } from "./ui/spinner"
 interface RecallWordInfo {
     basicInfo: VocabularyWord
     generatedSentence: string
+    userAnswer: string
     status: number
 }
 
@@ -18,10 +19,12 @@ const VocabularyRecall = () => {
 
     const vocabularyWords = useRef<VocabularyWord[]>([])
     const shuffledVocabularyWords = useRef<RecallWordInfo[]>([])
-    const [currentIdx, setCurrentIdx] = useState<number>(0)
+    const [currentIdx, setCurrentIdx] = useState<number>(-1)
 
     const [loading, setLoading] = useState<boolean>(true)
     const [loadingSentence, setLoadingSentence] = useState(false)
+
+    const [_, setManualReload] = useState(1)
 
     useEffect(() => {
         const getUserVocabulary = async () => {
@@ -44,28 +47,44 @@ const VocabularyRecall = () => {
 
     const nextWord = async () => {
         if (currentIdx + 1 >= shuffledVocabularyWords.current.length && shuffledVocabularyWords.current.length < vocabularyWords.current.length && vocabularyWords.current.length > 0) {
-            const randomIndex = Math.floor(Math.random() * shuffledVocabularyWords.current.length)
+            const randomIndex = Math.floor(Math.random() * vocabularyWords.current.length)
             
             try {
                 setLoadingSentence(true)
                 const resp = await api.get("/ai/generate-sentence-for-word/" + vocabularyWords.current[randomIndex].word)
 
-                shuffledVocabularyWords.current.push({basicInfo: vocabularyWords.current[randomIndex], generatedSentence: resp.data["sentence"], status: 0})
+                shuffledVocabularyWords.current.push({basicInfo: vocabularyWords.current[randomIndex], generatedSentence: resp.data["sentence"], userAnswer: "", status: 0})
                 vocabularyWords.current.splice(randomIndex, 1)
             } catch (error) {
                 console.error("Error fetching user vocabulary", error)
             } finally {
                 setLoadingSentence(false)
             }
-
-
-            setCurrentIdx(prev => prev + 1)
         }
+
+        setCurrentIdx(prev => prev + 1)
     }
 
     const prevWord = () => {
-        if (currentIdx - 1 >= 0) {
-            setCurrentIdx(prev => prev - 1)
+        setCurrentIdx(prev => prev - 1)
+    }
+
+    const checkAnswer = () => {
+        const cleanedAnswer = shuffledVocabularyWords.current[currentIdx].userAnswer.trim().toLowerCase()
+        if (cleanedAnswer === shuffledVocabularyWords.current[currentIdx].basicInfo.word) {
+            shuffledVocabularyWords.current[currentIdx].status = 2
+        } else if (shuffledVocabularyWords.current[currentIdx].status != 1) {
+            shuffledVocabularyWords.current[currentIdx].status = 1
+        }
+
+        setManualReload(prev => -1 * prev)
+        console.log(shuffledVocabularyWords.current[currentIdx].userAnswer)
+    }
+
+    const changeUserAnswer = (newValue: string) => {
+        if (currentIdx >= 0) {
+            shuffledVocabularyWords.current[currentIdx].userAnswer = newValue
+            setManualReload(prev => -1 * prev)
         }
     }
 
@@ -78,19 +97,25 @@ const VocabularyRecall = () => {
     }
 
     return (
-        <div className="flex flex-col gap-y-4 p-4 justify-center items-center">
+        <div className="flex flex-col gap-y-10 p-4 justify-center items-center">
             <div className="flex flex-row gap-x-4">
-                <Button onClick={prevWord}>Previous</Button>
-                <Button onClick={nextWord}>Next</Button>
+                <Button onClick={prevWord} disabled={currentIdx <= 0}>Previous</Button>
+                <Button onClick={nextWord} disabled={vocabularyWords.current.length === 0}>Next</Button>
             </div>
 
-            {loadingSentence ? <Spinner /> : <Label>{shuffledVocabularyWords.current[currentIdx].generatedSentence}</Label>}
-            
-            <div className="flex flex-col gay-y-4">
-                {shuffledVocabularyWords.current[currentIdx].status === 0 && <Input id="input-user-word" placeholder="Enter word here..." />}
-                {shuffledVocabularyWords.current[currentIdx].status <= 1 && <Button className={`${shuffledVocabularyWords.current[currentIdx].status === 0 ? "bg-emerald-600 hover:bg-emerald-500" : "bg-red-600 hover:bg-red-500"}`}>{shuffledVocabularyWords.current[currentIdx].status === 0 ? "Submit" : "Try Again"}</Button>}
-                {shuffledVocabularyWords.current[currentIdx].status === 2 && <Label className="">Well done!</Label>}
-            </div>
+            {currentIdx === -1 && loadingSentence ? <Spinner /> : currentIdx === -1 ? <Label className="text-neutral-500 italic">Click next to begin</Label> : 
+
+            loadingSentence ? <Spinner /> :
+                <>
+                    <Label>{shuffledVocabularyWords.current[currentIdx].generatedSentence}</Label>
+        
+                    <div className="flex flex-col gap-y-4 justify-center items-center">
+                        <Input id="input-user-word" placeholder="Enter word here..." value={shuffledVocabularyWords.current[currentIdx].userAnswer} onChange={e => changeUserAnswer(e.target.value)} disabled={shuffledVocabularyWords.current[currentIdx].status === 2}/>
+                        {shuffledVocabularyWords.current[currentIdx].status <= 1 && <Button className={`${shuffledVocabularyWords.current[currentIdx].status === 0 ? "bg-emerald-600 hover:bg-emerald-500" : "bg-red-600 hover:bg-red-500"} w-fit`} onClick={checkAnswer}>{shuffledVocabularyWords.current[currentIdx].status === 0 ? "Check" : "Try Again"}</Button>}
+                        {shuffledVocabularyWords.current[currentIdx].status === 2 && <Label className="">Well done!</Label>}
+                    </div>
+                </>
+            }
 
         </div>
     )
