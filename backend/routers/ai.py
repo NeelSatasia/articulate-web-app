@@ -109,7 +109,7 @@ async def user_sentence_review(user_sentence: str, generated_sentence: str, supa
 @router.get("/generate-sentence-for-word/{vocabulary_word}")
 async def generate_sentence_for_word(vocabulary_word: str, supabase=Depends(get_user_client)):
 
-    if vocabulary_word.strip() == "" or vocabulary_word.isalpha() == False or vocabulary_word.strip().split(' ') > 1:
+    if vocabulary_word.strip() == "" or vocabulary_word.isalpha() == False or len(vocabulary_word.strip().split(' ')) > 1:
         return
     
     prompt = f"Generate a sentence that carries the meaning of {vocabulary_word.strip()} without using the word itself"
