@@ -37,7 +37,9 @@ def callback(request: Request, code: str = None):
             "email": user.email,
             "uuid": user.id,
             "user_id": user_public_id.data[0]["user_id"],
-            "access_token": session.session.access_token 
+            "access_token": session.session.access_token,
+            "refresh_token": session.session.refresh_token,
+            "expires_at": session.session.expires_at
         }
 
         return RedirectResponse(f"{REDIRECT_FRONTEND_URL}/dashboard")
