@@ -127,7 +127,7 @@ const EssenceWriting = () => {
                 const resp = await api.post("/ai/essence-writing-check", jsonData)
                 
                 localStorage.setItem(isAuth, trueStr)
-                setSimilarityResults(resp.data[0])
+                setSimilarityResults(resp.data)
                 setPanel(0)
             }
         } catch (error) {
