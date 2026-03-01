@@ -99,8 +99,8 @@ const VocabularyRecall = () => {
     return (
         <div className="flex flex-col gap-y-10 p-4 justify-center items-center">
             <div className="flex flex-row gap-x-4">
-                <Button onClick={prevWord} disabled={currentIdx <= 0}>Previous</Button>
-                <Button onClick={nextWord} disabled={vocabularyWords.current.length === 0}>Next</Button>
+                <Button className="bg-white hover:bg-primary text-primary hover:text-white border border-black" onClick={prevWord} disabled={currentIdx <= 0}>Back</Button>
+                <Button className="bg-white hover:bg-primary text-primary hover:text-white border border-black" onClick={nextWord} disabled={vocabularyWords.current.length === 0}>Next</Button>
             </div>
 
             {currentIdx === -1 && loadingSentence ? <Spinner /> : currentIdx === -1 ? <Label className="text-neutral-500 italic">Click next to begin</Label> : 
@@ -111,8 +111,8 @@ const VocabularyRecall = () => {
         
                     <div className="flex flex-col gap-y-4 justify-center items-center">
                         <Input id="input-user-word" placeholder="Enter word here..." value={shuffledVocabularyWords.current[currentIdx].userAnswer} onChange={e => changeUserAnswer(e.target.value)} disabled={shuffledVocabularyWords.current[currentIdx].status === 2}/>
-                        {shuffledVocabularyWords.current[currentIdx].status <= 1 && <Button className={`${shuffledVocabularyWords.current[currentIdx].status === 0 ? "bg-emerald-600 hover:bg-emerald-500" : "bg-red-600 hover:bg-red-500"} w-fit`} onClick={checkAnswer}>{shuffledVocabularyWords.current[currentIdx].status === 0 ? "Check" : "Try Again"}</Button>}
-                        {shuffledVocabularyWords.current[currentIdx].status === 2 && <Label className="">Well done!</Label>}
+                        {shuffledVocabularyWords.current[currentIdx].status <= 1 && <Button className="bg-emerald-600 hover:bg-emerald-500 w-fit" onClick={checkAnswer}>Check</Button>}
+                        {shuffledVocabularyWords.current[currentIdx].status === 1 ? <Label className="text-red-500">Incorrect, please try again!</Label> : shuffledVocabularyWords.current[currentIdx].status === 2 && <Label className="text-green-500">Well done!</Label>}
                     </div>
                 </>
             }
