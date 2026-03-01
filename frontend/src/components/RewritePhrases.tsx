@@ -27,7 +27,7 @@ const RewritePhrases = () => {
     const [loading, setLoading] = useState<boolean>(true)
     const [currentIndex, setCurrentIndex] = useState<number>(0)
     const [loadingSentence, setLoadingSentence] = useState<boolean>(false)
-    const [_, setRefresh] = useState<number>(0)
+    const [_, setRefresh] = useState<number>(-1)
 
     useEffect(() => {
         const getWordBank = async () => {
@@ -88,7 +88,7 @@ const RewritePhrases = () => {
 
         if (wordBank.current[currentIndex].userSentence.trim().length === 0 || !wordBank.current[currentIndex].userSentence.trim().toLowerCase().includes(wordBank.current[currentIndex].phrase.toLowerCase())) {
             wordBank.current[currentIndex].isFoundMistakes = true
-            setRefresh(prev => prev + 1)
+            setRefresh(prev => -1 * prev)
         } else {
             wordBank.current[currentIndex].isFoundMistakes = false
         }
@@ -133,6 +133,13 @@ const RewritePhrases = () => {
         }
     }
 
+    const changeUserAnswer = (newValue: string) => {
+        if (currentIndex >= 0) {
+            wordBank.current[currentIndex].userSentence = newValue
+            setRefresh(prev => -1 * prev)
+        }
+    }
+
     if (loading) {
         return <Loading spinnerAction="Loading"/>
     }
@@ -169,10 +176,10 @@ const RewritePhrases = () => {
                         key="user-sentence-input"
                         type="text"
                         placeholder="Rewrite the sentence using the phrase..."
-                        defaultValue={wordBank.current[currentIndex].userSentence}
+                        value={wordBank.current[currentIndex].userSentence}
                         onChange={(e) => {
                             if (e.target.value.length <= 255) {
-                                wordBank.current[currentIndex].userSentence = e.target.value
+                                changeUserAnswer(e.target.value)
                             }
                         }}
                         className="w-3/4"
