@@ -100,10 +100,10 @@ const VocabularyRecall = () => {
         <div className="flex flex-col gap-y-10 p-4 justify-center items-center">
             <div className="flex flex-row gap-x-4">
                 <Button className="bg-white hover:bg-primary text-primary hover:text-white border border-black" onClick={prevWord} disabled={currentIdx <= 0}>Back</Button>
-                <Button className="bg-white hover:bg-primary text-primary hover:text-white border border-black" onClick={nextWord} disabled={vocabularyWords.current.length === 0}>Next</Button>
+                <Button onClick={nextWord} disabled={currentIdx >= vocabularyWords.current.length - 1}>Next</Button>
             </div>
 
-            {currentIdx === -1 && loadingSentence ? <Spinner /> : currentIdx === -1 ? <Label className="text-neutral-500 italic">Click next to begin</Label> : 
+            {currentIdx === -1 && loadingSentence ? <Spinner /> : currentIdx === -1 ? <Label className="text-neutral-500 italic">{vocabularyWords.current.length === 0 ? "Your vocabulary collection is currently empty!" : "Click next to begin"}</Label> : 
 
             loadingSentence ? <Spinner /> :
                 <>

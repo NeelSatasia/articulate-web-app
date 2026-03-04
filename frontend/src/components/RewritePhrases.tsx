@@ -7,6 +7,7 @@ import { Spinner } from "./ui/spinner"
 import { Input } from "./ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card"
 import { Navigate } from "react-router-dom"
+import { Label } from "@radix-ui/react-label"
 
 interface WordPhraseResponse {
     phraseID: number
@@ -149,14 +150,13 @@ const RewritePhrases = () => {
     }
 
     return (
-        <div className="flex flex-col justify-center bg-neutral-100 rounded-md m-4 p-4">
-            <div className="flex justify-center mb-10">
-                <Button className="bg-zinc-500 hover:bg-neutral-400" onClick={prevWordPhrase}>Previous</Button>
-                <Button className={`${wordBank.current[currentIndex].isSentenceGenerated ? "bg-teal-600 hover:bg-teal-500" : "bg-amber-600 hover:bg-amber-500"} ml-4`} onClick={nextWordPhrase}>
-                    {wordBank.current[currentIndex].isSentenceGenerated ? "Continue" : "Skip"}
-                </Button>
+        <div className="flex flex-col justify-center items-center rounded-md m-4 p-4 gap-y-8">
+            <div className="flex justify-center gap-x-3">
+                <Button className="bg-white hover:bg-primary text-primary hover:text-white border border-black" onClick={prevWordPhrase} disabled={currentIndex === 0}>Back</Button>
+                <Button onClick={nextWordPhrase} disabled={currentIndex >= wordBank.current.length - 1}>Next</Button>
             </div>
 
+            {wordBank.current.length > 0 ? 
             <div className="flex flex-col justify-center items-center">
                 <span className="flex justify-center mb-4">
                     <h2><b>Phrase:</b></h2>
@@ -244,7 +244,7 @@ const RewritePhrases = () => {
                     }
 
                 </div>}
-            </div>
+            </div> : <Label className="text-neutral-500 italic">Your commonplace book is currently empty!</Label>}
         </div>
     )
 }
