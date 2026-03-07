@@ -2,7 +2,7 @@ import api from "@/api"
 import { useEffect, useRef, useState } from "react"
 import { Navigate } from "react-router-dom"
 import Loading from "./Loading"
-import { falseStr, isAuth, trueStr, type VocabularyWord } from "../commons"
+import { falseStr, isAuth, setAuthInLocalStorage, trueStr, type VocabularyWord } from "../commons"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
@@ -29,6 +29,7 @@ const Vocabulary = () => {
                     setVocabulary(resp.data)
                 }
             } catch (error) {
+                setAuthInLocalStorage(error)
                 console.error("Error fetching vocabulary", error)
             } finally {
                 setLoading(false)
@@ -72,6 +73,7 @@ const Vocabulary = () => {
                     setNewWord("")
                 }
             } catch (error) {
+                setAuthInLocalStorage(error)
                 console.error("Error adding new vocabulary words", error)
             } finally {
                 setAddWordLoading(false)
@@ -101,6 +103,7 @@ const Vocabulary = () => {
             toBeDeleted.current.clear()
             setVocabulary(updated)
         } catch (error) {
+            setAuthInLocalStorage(error)
             console.error("Error deleting vocabulary word", error)
         } finally {
             setDelWordsLoading(false)

@@ -1,6 +1,6 @@
 import { Navigate } from "react-router-dom"
 import api from "../api"
-import { isAuth, loadingStr, trueStr, type VocabularyWord } from "../commons"
+import { isAuth, loadingStr, setAuthInLocalStorage, trueStr, type VocabularyWord } from "../commons"
 import { useEffect, useRef, useState } from "react"
 import Loading from "./Loading"
 import { Button } from "./ui/button"
@@ -36,6 +36,7 @@ const VocabularyRecall = () => {
                     vocabularyWords.current = resp.data
                 }
             } catch (error) {
+                setAuthInLocalStorage(error)
                 console.error("Error fetching user vocabulary", error)
             } finally {
                 setLoading(false)
@@ -56,6 +57,7 @@ const VocabularyRecall = () => {
                 shuffledVocabularyWords.current.push({basicInfo: vocabularyWords.current[randomIndex], generatedSentence: resp.data["sentence"], userAnswer: "", status: 0})
                 vocabularyWords.current.splice(randomIndex, 1)
             } catch (error) {
+                setAuthInLocalStorage(error)
                 console.error("Error fetching user vocabulary", error)
             } finally {
                 setLoadingSentence(false)

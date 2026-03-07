@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Label } from "./ui/label"
 import { Textarea } from "./ui/textarea"
 import { Button } from "./ui/button"
-import { isAuth, loadingStr, trueStr, type PromptInfo } from "../commons"
+import { isAuth, loadingStr, setAuthInLocalStorage, trueStr, type PromptInfo } from "../commons"
 import api from "../api"
 import Loading from "./Loading"
 import { Spinner } from "./ui/spinner"
@@ -39,6 +39,7 @@ const EssenceWriting = () => {
                     setPrompts(resp.data)
                 }
             } catch (error) {
+                setAuthInLocalStorage(error)
                 console.error("Error fetching prompts", error)
             } finally {
                 setLoading(false)
@@ -131,6 +132,7 @@ const EssenceWriting = () => {
                 setPanel(0)
             }
         } catch (error) {
+            setAuthInLocalStorage(error)
             console.error("Error checking results", error)
         } finally {
             setLoadingResult(false)
