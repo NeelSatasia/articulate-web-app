@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.concurrency import run_in_threadpool
 from models import VocabularyWordInfo
 from typing import List
+import random
 
 router = APIRouter(prefix="/vocabulary", tags=["Vocabulary"])
 
@@ -40,19 +41,34 @@ async def user_vocabulary(supabase=Depends(get_user_client)):
 async def user_dashboard(supabase=Depends(get_user_client)):
 
     try:
+        active_result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").select("vocab_word_id, word_id").eq("display_status", 1).limit(3).execute())
         
-        result = await run_in_threadpool(lambda: supabase.rpc('get_daily_dashboard_content', { "target_table": "user_vocabulary", "pk_column": "vocab_word_id", "limit_count": 3 }).execute())
+        active_rows = active_result.data
 
-        if result:
-            word_ids = []
+        if not active_rows:
+            pool_result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").select("vocab_word_id, word_id").eq("display_status", 2).execute())
+            
+            pool_rows = pool_result.data
+            
+            if pool_rows:
+                num_to_pick = min(3, len(pool_rows))
+                selected_rows = random.sample(pool_rows, num_to_pick)
+                
+                selected_vocab_ids = [row["vocab_word_id"] for row in selected_rows]
+                
+                await run_in_threadpool(lambda: supabase.table("user_vocabulary").update({"display_status": 1}).in_("vocab_word_id", selected_vocab_ids).execute())
+                
+                active_rows = selected_rows
 
-            for row in result.data:
-                word_ids.append(row["word_id"])
+        if active_rows:
+            word_ids = [row["word_id"] for row in active_rows]
 
-            words = await run_in_threadpool(lambda: supabase.table("vocabulary_words").select("*").in_("word_id", word_ids).execute())
+            words_result = await run_in_threadpool(lambda: supabase.table("vocabulary_words").select("*").in_("word_id", word_ids).execute())
 
-            if words:
-                return words.data
+            if words_result:
+                return words_result.data
+
+        return []
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

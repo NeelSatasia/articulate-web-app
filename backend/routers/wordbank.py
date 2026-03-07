@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import Dict, List
 from fastapi.concurrency import run_in_threadpool
 from userclient import get_user_client
+import random
 
 router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
 
@@ -45,12 +46,27 @@ async def user_word_categories(supabase=Depends(get_user_client)):
 async def current_word_phrases(supabase=Depends(get_user_client)):
     
     try:
+        active_result = await run_in_threadpool(lambda: supabase.table("word_bank").select("*").eq("display_status", 1).limit(5).execute())
+        
+        active_rows = active_result.data
 
-        result = await run_in_threadpool(lambda: supabase.rpc('get_daily_dashboard_content', { "target_table": "word_bank", "pk_column": "word_id", "limit_count": 5 }).execute())
-
-        if result:
-            return result.data
+        if not active_rows:
+            pool_result = await run_in_threadpool(lambda: supabase.table("word_bank").select("*").eq("display_status", 2).execute())
+            
+            pool_rows = pool_result.data
+            
+            if pool_rows:
+                num_to_pick = min(5, len(pool_rows))
+                selected_rows = random.sample(pool_rows, num_to_pick)
                 
+                selected_word_ids = [row["word_id"] for row in selected_rows]
+                
+                await run_in_threadpool(lambda: supabase.table("word_bank").update({"display_status": 1}).in_("word_id", selected_word_ids).execute())
+                
+                active_rows = selected_rows
+
+        return active_rows if active_rows else []
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
