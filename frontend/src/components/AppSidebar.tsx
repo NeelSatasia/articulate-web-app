@@ -97,6 +97,12 @@ const AppSidebar = () => {
             </SidebarContent>
 
             <SidebarFooter>
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild className="text-sm">
+                        <Link to="/settings">Settings</Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+                
                 <Button key="logout-btn" className="bg-red-600 hover:bg-red-500" size="sm" onClick={logoutUser}>Logout</Button>
             </SidebarFooter>
         </Sidebar>
