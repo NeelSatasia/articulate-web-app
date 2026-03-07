@@ -81,6 +81,7 @@ const RewritePhrases = () => {
             setLoadingSentence(false)
 
         } catch (error) {
+            setAuthInLocalStorage(error)
             console.error("Error generating sentence", error)
         }
     }
@@ -127,6 +128,7 @@ const RewritePhrases = () => {
                 }
 
             } catch (error) {
+                setAuthInLocalStorage(error)
                 console.error("Error reviewing user sentence", error)
             } finally {
                 setLoadingSentence(false)
