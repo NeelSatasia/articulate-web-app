@@ -64,7 +64,7 @@ const Vocabulary = () => {
             try {
                 if (localStorage.getItem(isAuth) === trueStr) {
                     setAddWordLoading(true)
-                    const resp = await api.post<VocabularyWord[]>("/ai/vocabulary-words/batch", {words: Array.from(newVocabWords)})
+                    const resp = await api.post<VocabularyWord[]>("/ai/vocabulary", {words: Array.from(newVocabWords)})
                     
                     localStorage.setItem(isAuth, trueStr)
                     

@@ -131,7 +131,7 @@ async def generate_sentence_for_word(vocabulary_word: str, supabase=Depends(get_
 
 # POST ---------------------------------------------------------------------------------------------------------------------------------------
 
-@router.post("/vocabulary-words/batch")
+@router.post("/vocabulary")
 async def vocabulary_words(
     payload: VocabularyBatchRequest, 
     request: Request, 
