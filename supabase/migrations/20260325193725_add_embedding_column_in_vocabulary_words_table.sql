@@ -1,0 +1,1 @@
+ALTER TABLE vocabulary_words ADD embedding vector;
