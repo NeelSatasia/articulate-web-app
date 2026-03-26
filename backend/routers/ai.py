@@ -3,9 +3,11 @@ from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
 from userclient import get_user_client
-from models import GrammarReview, WordBatchResponse, VocabularyBatchRequest, EssenceWritingReponse
+from models import *
 from fastapi.concurrency import run_in_threadpool
 from scipy import spatial
+from typing import Dict
+import ast
 
 load_dotenv()
 
@@ -193,6 +195,23 @@ async def vocabulary_words(
                 )
                 newly_inserted_words = insert_result.data
 
+                if newly_inserted_words:
+                    texts_to_embed = [f"{row['word']}: {row['definition']}" for row in newly_inserted_words]
+
+                    embedding_response = await openai_client.embeddings.create(
+                        model="text-embedding-3-small",
+                        input=texts_to_embed
+                    )
+
+                    for i, row in enumerate(newly_inserted_words):
+                        row["embedding"] = embedding_response.data[i].embedding
+
+                    await run_in_threadpool(
+                        lambda: supabase.table("vocabulary_words")
+                        .upsert(newly_inserted_words)
+                        .execute()
+                    )
+
         all_words = existing_words_data + newly_inserted_words
         
         if not all_words:
@@ -227,3 +246,117 @@ async def essence_writing_check(user_response: EssenceWritingReponse, supabase=D
     res_13 = 1 - spatial.distance.cosine(generated_embeddings.data[0].embedding, generated_embeddings.data[2].embedding)
 
     return [round((res_12 + res_13) / 2, 4), round((res_12 + res_23) / 2, 4), round((res_23 + res_13) / 2, 4)]
+
+
+@router.post("/relevant-vocabulary-words")
+async def calculate_similarity(
+    text_input: Dict[str, str], 
+    request: Request, 
+    supabase=Depends(get_user_client)
+):
+    user = request.session.get('user')
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    input_text = text_input.get("text", "").strip()
+
+    if not input_text:
+        raise HTTPException(status_code=400, detail="Input text cannot be empty")
+
+    try:
+        user_vocab_result = await run_in_threadpool(
+            lambda: supabase.table("user_vocabulary")
+            .select("vocabulary_words(word, embedding)")
+            .execute()
+        )
+        user_vocab_data = user_vocab_result.data
+
+        if not user_vocab_data:
+            raise HTTPException(status_code=404, detail="User has no vocabulary words")
+
+        
+        valid_words = []
+        for item in user_vocab_data:
+            word_info = item.get("vocabulary_words")
+            if word_info and word_info.get("embedding"):
+                valid_words.append({
+                    "word": word_info["word"],
+                    "embedding": ast.literal_eval(word_info["embedding"])
+                })
+
+        if len(valid_words) == 0:
+             raise HTTPException(status_code=404, detail="User has no words with generated embeddings yet.")
+
+        # Get the embedding for the input text
+        embeddings_result = await openai_client.embeddings.create(
+            input=input_text,
+            model="text-embedding-3-small"
+        )
+        
+        input_embedding = embeddings_result.data[0].embedding
+
+        similarities = []
+        for item in valid_words:
+            similarity = 1 - spatial.distance.cosine(input_embedding, item["embedding"])
+            similarities.append((item["word"], similarity))
+
+        # Sort by similarity and get top 5
+        top_5 = sorted(similarities, key=lambda x: x[1], reverse=True)[:5]
+
+        # Return the top 5 words
+        return [{"word": word, "similarity": round(sim, 4)} for word, sim in top_5]
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+@router.post("/verify-vocabulary-usage")
+async def verify_vocabulary_usage(
+    payload: VerifyUsageRequest,
+    request: Request,
+    supabase=Depends(get_user_client)
+):
+    user = request.session.get('user')
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    if not payload.text.strip() or not payload.words:
+        raise HTTPException(status_code=400, detail="Text and words list cannot be empty.")
+
+    try:
+        prompt = f"""
+        You are an expert English tutor. Review the following text written by a student:
+        
+        TEXT:
+        "{payload.text}"
+
+        The student was supposed to incorporate the following vocabulary words: {', '.join(payload.words)}.
+        
+        For each word in the list, evaluate its usage based on:
+        1. Does it appear in the text?
+        2. Is the semantic meaning preserved and correct within the context?
+        3. Is the grammar decently correct?
+
+        Rules for feedback:
+        - If the word is used correctly, set is_correct to true and feedback to exactly "yes".
+        - If the word is missing or used incorrectly, set is_correct to false and provide a brief (1-2 sentence) explanation in the feedback field on how it could be better used within the context of their specific text. If an explanation isn't helpful, just output "no".
+        """
+
+        # 3. Call OpenAI with Structured Outputs
+        # Make sure to use the model you specified previously (or gpt-4o-mini)
+        ai_response = await openai_client.beta.chat.completions.parse(
+            model="gpt-4.1-mini-2025-04-14",
+            messages=[{"role": "user", "content": prompt}],
+            response_format=UsageVerificationResult
+        )
+
+        verification_data = ai_response.choices[0].message.parsed
+        
+        return verification_data.dict()
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to verify usage: {str(e)}")
