@@ -10,6 +10,7 @@ import RewritePhrases from './components/RewritePhrases.tsx'
 import EssenceWriting from './components/EssenceWriting.tsx'
 import VocabularyRecall from './components/VocabularyRecall.tsx'
 import Settings from './components/Settings.tsx'
+import FreeWriting from './components/FreeWriting.tsx'
 
 const router = createBrowserRouter([
     {path: "/", element: <App />},
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
             { path: "sentence-crafting", element: <RewritePhrases /> },
             { path: "vocabulary-recall", element: <VocabularyRecall /> },
             { path: "essence-writing", element: <EssenceWriting /> },
+            { path: "free-writing", element: <FreeWriting /> }, 
             { path: "settings", element: <Settings /> }
         ]
     }

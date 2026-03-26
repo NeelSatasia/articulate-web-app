@@ -86,6 +86,12 @@ const AppSidebar = () => {
                                                     <Link to="/essence-writing">Essence Writing</Link>
                                                 </SidebarMenuButton>
                                             </SidebarMenuSubItem>
+
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuButton asChild>
+                                                    <Link to="/free-writing">Free Writing</Link>
+                                                </SidebarMenuButton>
+                                            </SidebarMenuSubItem>
                                         </SidebarMenuSub>
                                     </CollapsibleContent>
                                 </Collapsible>
