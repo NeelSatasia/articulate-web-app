@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal, List
 
 class User(BaseModel):
@@ -46,3 +46,15 @@ class EssenceWritingReponse(BaseModel):
     words_100: str
     words_50: str
     words_25: str
+
+class VerifyUsageRequest(BaseModel):
+    text: str
+    words: List[str]
+
+class WordUsageCheck(BaseModel):
+    word: str
+    is_correct: bool = Field(description="True if the word is used correctly in context with decent grammar.")
+    feedback: str = Field(description="If correctly used, return exactly 'yes'. If incorrect, provide a brief explanation of how to best use it in this context, or exactly 'no'.")
+
+class UsageVerificationResult(BaseModel):
+    results: List[WordUsageCheck]
