@@ -346,8 +346,6 @@ async def verify_vocabulary_usage(
         - If the word is missing or used incorrectly, set is_correct to false and provide a brief (1-2 sentence) explanation in the feedback field on how it could be better used within the context of their specific text. If an explanation isn't helpful, just output "no".
         """
 
-        # 3. Call OpenAI with Structured Outputs
-        # Make sure to use the model you specified previously (or gpt-4o-mini)
         ai_response = await openai_client.beta.chat.completions.parse(
             model="gpt-4.1-mini-2025-04-14",
             messages=[{"role": "user", "content": prompt}],
