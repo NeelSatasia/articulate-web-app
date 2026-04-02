@@ -3,7 +3,6 @@ import { useEffect, useState } from "react"
 import api from "../api"
 import {isAuth, loadingStr, setAuthInLocalStorage, trueStr, type VocabularyWord, type WordPhrase } from "../commons"
 import Loading from "./Loading"
-import { Table, TableBody, TableCell, TableRow } from "./ui/table"
 
 const Dashboard = () => {
 
@@ -49,42 +48,50 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="flex flex-col justify-center items-center gap-y-5 p-4">
-            <div className="w-full p-2 outline outline-offset outline-primary rounded">
-                <h1 className="text-3xl mb-2">Today's Word-Phrases</h1>
+        <div className="flex w-full flex-col gap-6 px-4 py-6 text-left sm:px-6">
+            <section className="rounded-lg border bg-card p-4 text-card-foreground">
+                <h2 className="text-2xl font-semibold">Today's Word-Phrases</h2>
 
-                {todaysWordPhrases.size > 0 ? 
-                <Table key="dashboard-word-phrases" className="rounded bg-neutral-100">
-                    <TableBody key="word-phrases-content">
+                {todaysWordPhrases.size > 0 ? (
+                    <ul className="mt-4 space-y-2">
                         {Array.from(todaysWordPhrases).map(([wordID, wordPhrase]) => (
-                            <TableRow key={"dashboard-word-phrase-row-" + wordID}>
-                                <TableCell key={"dashboard-word-phrase-" + wordID} className="rounded hover:bg-primary hover:text-secondary">
-                                    {wordPhrase}
-                                </TableCell>
-                            </TableRow>
+                            <li
+                                key={"dashboard-word-phrase-" + wordID}
+                                className="rounded-md border bg-background px-3 py-2"
+                            >
+                                {wordPhrase}
+                            </li>
                         ))}
-                    </TableBody>
-                </Table> : "Your word-phrases collection is currently empty. Navigate to Commonplace Book to add your word-phrases."}
-            </div>
+                    </ul>
+                ) : (
+                    <p className="mt-4 text-sm text-muted-foreground">
+                        Your word-phrases collection is currently empty. Navigate to Commonplace Book to add your word-phrases.
+                    </p>
+                )}
+            </section>
 
-            <div className="w-full p-2 outline outline-offset outline-primary rounded">
-                <h1 className="text-3xl mb-2">Today's Vocabulary</h1>
-                {todaysVocabulary.length > 0 ?
-                <Table key="dashboard-new-vocabulary" className="rounded bg-neutral-100">
-                    <TableBody key="new-vocabulary-content">
-                        {todaysVocabulary.map(vocabulary => (
-                            <TableRow key={"dashboard-new-vocabulary-row-" + vocabulary.word_id} className="hover:bg-primary hover:text-secondary rounded">
-                                <TableCell key={"dashboard-new-vocabulary-" + vocabulary.word_id} className="rounded-l-md">
-                                    {vocabulary.word}
-                                </TableCell>
-                                <TableCell key={"dashboard-new-vocabulary-definition-" + vocabulary.word_id} >
-                                    {vocabulary.definition}
-                                </TableCell>
-                            </TableRow>
+            <section className="rounded-lg border bg-card p-4 text-card-foreground">
+                <h2 className="text-2xl font-semibold">Today's Vocabulary</h2>
+
+                {todaysVocabulary.length > 0 ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {todaysVocabulary.map((vocabulary) => (
+                            <article
+                                key={"dashboard-new-vocabulary-" + vocabulary.word_id}
+                                className="rounded-lg border bg-background p-4 shadow-sm transition hover:shadow"
+                            >
+                                <h3 className="text-xl font-semibold">{vocabulary.word}</h3>
+                                <p className="mt-2 text-sm text-muted-foreground">{vocabulary.definition}</p>
+                                <p className="mt-3 text-sm italic">{vocabulary.example || "No example available yet."}</p>
+                            </article>
                         ))}
-                    </TableBody>
-                </Table> : "Your vocabulary collection is currently empty. Navigate to Vocabulary to search and add new vocabulary words."}
-            </div>
+                    </div>
+                ) : (
+                    <p className="mt-4 text-sm text-muted-foreground">
+                        Your vocabulary collection is currently empty. Navigate to Vocabulary to search and add new vocabulary words.
+                    </p>
+                )}
+            </section>
         </div>
     )
 }
