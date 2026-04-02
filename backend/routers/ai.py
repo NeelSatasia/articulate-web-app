@@ -165,7 +165,7 @@ async def vocabulary_words(
         if missing_words:
             prompt = f"""
             Analyze the following list of words: {', '.join(missing_words)}.
-            For each VALID English word, provide the word, a concise definition, and its CEFR level (A1, A2, B1, B2, C1, C2).
+            For each VALID English word, provide the word, a concise definition, an example, and its CEFR level (A1, A2, B1, B2, C1, C2).
             Ignore invalid words, names, or gibberish.
             """
 
@@ -185,6 +185,7 @@ async def vocabulary_words(
                     words_to_insert.append({
                         "word": item.word.lower(), 
                         "definition": item.definition,
+                        "example": item.example,
                         "word_level": cefr_map.get(item.cefr_level.upper(), 3) 
                     })
 

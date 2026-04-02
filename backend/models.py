@@ -30,6 +30,7 @@ class GrammarReview(BaseModel):
 class WordInfo(BaseModel):
     word: str
     definition: str
+    example: str
     cefr_level: str
 
 class WordBatchResponse(BaseModel):
