@@ -32,6 +32,7 @@ export interface VocabularyWord {
     word_id: number
     word: string
     definition: string
+    example: string
     word_level: number
 }
 
