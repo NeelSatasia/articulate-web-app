@@ -1,0 +1,1 @@
+ALTER TABLE vocabulary_words ADD COLUMN example TEXT;
