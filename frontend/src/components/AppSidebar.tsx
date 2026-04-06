@@ -109,7 +109,7 @@ const AppSidebar = () => {
                     </SidebarMenuButton>
                 </SidebarMenuItem>
                 
-                <Button key="logout-btn" className="bg-red-600 hover:bg-red-500" size="sm" onClick={logoutUser}>Logout</Button>
+                <Button key="logout-btn" className="bg-red-500 hover:bg-red-400" size="sm" onClick={logoutUser}>Logout</Button>
             </SidebarFooter>
         </Sidebar>
     )

@@ -396,10 +396,10 @@ const WordBank = () => {
                     {editMode ? "Save changes" : "Edit"}
                 </Button>
                 
-                {editMode && <Button key="cancel-changes" className="bg-red-600 hover:bg-red-500 mr-4" onClick={cancelChanges}>Cancel</Button>}
+                {editMode && <Button key="cancel-changes" className="bg-red-500 hover:bg-red-400 mr-4" onClick={cancelChanges}>Cancel</Button>}
                 {addNewCategoryMode && <Input id="new-category-name" className="mr-2" defaultValue={newCategory.current} onChange={(e) => newCategory.current = e.target.value}/>}
                 {editMode && 
-                    <Button key="add-category" className="bg-green-600 hover:bg-green-500" onClick={changeCategoryMode}>
+                    <Button key="add-category" className="bg-emerald-600 hover:bg-emerald-500" onClick={changeCategoryMode}>
                         {addNewCategoryMode ? "Add" : "New Category"}
                     </Button>
                 }
@@ -451,7 +451,7 @@ const WordBank = () => {
                                         ))}
                                     </TableBody>
                                 </Table>
-                                {editMode && <Button key={"add-new-" + categoryID.toString()} className="w-full bg-green-700 hover:bg-green-600" onClick={() => addNewWordPhrase(categoryID)} disabled={deleteExistingCategories.current.has(categoryID)}>Add</Button>}
+                                {editMode && <Button key={"add-new-" + categoryID.toString()} className="w-full bg-emerald-600 hover:bg-emerald-500" onClick={() => addNewWordPhrase(categoryID)} disabled={deleteExistingCategories.current.has(categoryID)}>Add</Button>}
                             </AccordionContent>
                         </AccordionItem>
                     ))}

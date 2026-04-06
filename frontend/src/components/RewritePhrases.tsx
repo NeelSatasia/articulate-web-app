@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react"
 import Loading from "./Loading"
 import { Button } from "./ui/button"
 import { Spinner } from "./ui/spinner"
-import { Input } from "./ui/input"
+import { Textarea } from "./ui/textarea"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "./ui/card"
 import { Navigate } from "react-router-dom"
-import { Label } from "@radix-ui/react-label"
+import { Label } from "./ui/label"
 
 interface WordPhraseResponse {
     phraseID: number
@@ -143,6 +143,9 @@ const RewritePhrases = () => {
         }
     }
 
+    const currentWord = wordBank.current[currentIndex]
+    const hasWords = wordBank.current.length > 0
+
     if (loading) {
         return <Loading spinnerAction="Loading"/>
     }
@@ -152,101 +155,126 @@ const RewritePhrases = () => {
     }
 
     return (
-        <div className="flex flex-col justify-center items-center rounded-md m-4 p-4 gap-y-8">
-            <div className="flex justify-center gap-x-3">
-                <Button className="bg-white hover:bg-primary text-primary hover:text-white border border-black" onClick={prevWordPhrase} disabled={currentIndex === 0}>Back</Button>
-                <Button onClick={nextWordPhrase} disabled={currentIndex >= wordBank.current.length - 1}>Next</Button>
-            </div>
+        <div className="flex w-full flex-col gap-6 p-4">
+            <Card>
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-2xl">Rewrite Phrases Practice</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                        <span>Phrase {hasWords ? currentIndex + 1 : 0} of {wordBank.current.length}</span>
+                    </div>
 
-            {wordBank.current.length > 0 ? 
-            <div className="flex flex-col justify-center items-center">
-                <span className="flex justify-center mb-4">
-                    <h2><b>Phrase:</b></h2>
-                    <p className="ml-2">{wordBank.current[currentIndex].phrase}</p>
-                </span>
+                    <div className="flex gap-3">
+                        <Button variant="outline" onClick={prevWordPhrase} disabled={currentIndex === 0}>Back</Button>
+                        <Button onClick={nextWordPhrase} disabled={currentIndex >= wordBank.current.length - 1}>Next</Button>
+                    </div>
+                </CardContent>
+            </Card>
 
-                {wordBank.current[currentIndex].isSentenceGenerated == false && <Button className="bg-teal-600 hover:bg-teal-500 w-fit mb-4" onClick={generateSentence} disabled={wordBank.current[currentIndex].isSentenceGenerated}>Generate Sentence</Button>}
+            {hasWords ? 
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Phrase: <span className="font-normal">{currentWord.phrase}</span></CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {!currentWord.isSentenceGenerated && (
+                        <Button className="bg-teal-600 hover:bg-teal-500" onClick={generateSentence} disabled={currentWord.isSentenceGenerated}>
+                            Generate Sentence
+                        </Button>
+                    )}
 
-                
-                {loadingSentence && wordBank.current[currentIndex].isSentenceGenerated == false ?
-                    <Spinner /> : 
-                    wordBank.current[currentIndex].isSentenceGenerated && <p><b>Generated Sentence: </b>{wordBank.current[currentIndex].generatedSentence}</p>
-                }
+                    {loadingSentence && !currentWord.isSentenceGenerated ? (
+                        <Spinner />
+                    ) : (
+                        currentWord.isSentenceGenerated && (
+                            <div className="rounded-md border bg-muted/40 p-4">
+                                <p className="text-sm font-semibold">Generated Sentence</p>
+                                <p className="mt-1">{currentWord.generatedSentence}</p>
+                            </div>
+                        )
+                    )}
 
-                {wordBank.current[currentIndex].isSentenceGenerated && <div className="mt-4 w-full justify-center items-center flex flex-col ">
-                    <Input
-                        key="user-sentence-input"
-                        type="text"
-                        placeholder="Rewrite the sentence using the phrase..."
-                        value={wordBank.current[currentIndex].userSentence}
-                        onChange={(e) => {
-                            if (e.target.value.length <= 255) {
-                                changeUserAnswer(e.target.value)
-                            }
-                        }}
-                        className="w-3/4"
-                        disabled={wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length == 0 && wordBank.current[currentIndex].similarity >= 70.0} />
-
-                    {loadingSentence ? 
-                        <Spinner className="mt-2" /> : 
-                        wordBank.current[currentIndex].isResponseReviewed || wordBank.current[currentIndex].isFoundMistakes ?
-                            <Card className="mt-4 bg-neutral-100">
-                                <CardHeader className="text-2xl text-center">
-                                    <CardTitle className={`${wordBank.current[currentIndex].isFoundMistakes ? "text-red-600" : "text-primary"} text-nowrap`}>
-                                        { wordBank.current[currentIndex].isFoundMistakes  ? 
-                                            "Mistakes/Erros Found!" : "Result"
+                    {currentWord.isSentenceGenerated && (
+                        <div className="space-y-4">
+                            <div>
+                                <Label htmlFor="rewrite-input">Your Rewrite</Label>
+                                <Textarea
+                                    id="rewrite-input"
+                                    key="user-sentence-input"
+                                    placeholder="Rewrite the sentence naturally using the phrase..."
+                                    value={currentWord.userSentence}
+                                    onChange={(e) => {
+                                        if (e.target.value.length <= 255) {
+                                            changeUserAnswer(e.target.value)
                                         }
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    { wordBank.current[currentIndex].isFoundMistakes ? 
-                                        <div className="text-red-600">
+                                    }}
+                                    rows={4}
+                                    className="mt-2"
+                                    disabled={currentWord.userGrammarMistakes.grammar_check.length == 0 && currentWord.similarity >= 70.0}
+                                />
+                                <p className="mt-1 text-xs text-muted-foreground">Max 255 characters</p>
+                            </div>
 
-                                            {wordBank.current[currentIndex].userSentence.trim().length === 0 && <p>Empty response</p>}
+                            {loadingSentence ? (
+                                <Spinner className="mt-2" />
+                            ) : currentWord.isResponseReviewed || currentWord.isFoundMistakes ? (
+                                <Card className="bg-neutral-50">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className={`${currentWord.isFoundMistakes ? "text-red-600" : "text-primary"} text-nowrap`}>
+                                            {currentWord.isFoundMistakes ? "Mistakes/Errors Found" : "Result"}
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {currentWord.isFoundMistakes ? (
+                                            <div className="text-red-700">
+                                                {currentWord.userSentence.trim().length === 0 && <p>Empty response</p>}
 
-                                            {!wordBank.current[currentIndex].userSentence.toLowerCase().includes(wordBank.current[currentIndex].phrase.toLowerCase()) && 
-                                                <p>Incomplete usage of the given word-phrase in the sentence</p>
-                                            }
+                                                {!currentWord.userSentence.toLowerCase().includes(currentWord.phrase.toLowerCase()) && (
+                                                    <p>Incomplete usage of the given word-phrase in the sentence</p>
+                                                )}
 
-                                            {wordBank.current[currentIndex].userGrammarMistakes.grammar_check.map((mistakeTypeList: GrammarMistakeGroup) => (
-                                                <div className="bg-red-200 rounded-lg p-2 mt-3">
-                                                    <div className="mb-2"><b className="text-lg">{mistakeTypeList.mistake_type}</b></div>
-                                                    <ol type="1" className="list-decimal pl-10">
-                                                        {mistakeTypeList.mistakes.map((mistake: MistakeAndHint) => (
-                                                            <div className="mt-2">
-                                                                <li>{mistake.mistake}
+                                                {currentWord.userGrammarMistakes.grammar_check.map((mistakeTypeList: GrammarMistakeGroup, idx: number) => (
+                                                    <div key={`mistake-group-${idx}`} className="mt-3 rounded-lg bg-red-100 p-2">
+                                                        <div className="mb-2"><b className="text-lg">{mistakeTypeList.mistake_type}</b></div>
+                                                        <ol type="1" className="list-decimal pl-10">
+                                                            {mistakeTypeList.mistakes.map((mistake: MistakeAndHint, mistakeIdx: number) => (
+                                                                <li key={`mistake-${idx}-${mistakeIdx}`} className="mt-2">
+                                                                    {mistake.mistake}
                                                                     <ul className="pl-6">
                                                                         <li>- <b>Hint: </b>{mistake.hint}</li>
                                                                     </ul>
                                                                 </li>
-                                                            </div>
-                                                        ))}
-                                                    </ol>
-                                                </div>
-                                            ))}
-                                        </div> :
-                                        <div>
-                                            <p className="mt-2"><b>Similarity:</b> {wordBank.current[currentIndex].similarity}%</p>
-                                            <p><b>Feedback:</b> {wordBank.current[currentIndex].userResult}</p>
-                                        </div>
-                                    }
-                                    
-                                </CardContent>
-                                
-                                {(wordBank.current[currentIndex].userGrammarMistakes.grammar_check.length > 0 || wordBank.current[currentIndex].similarity < 70.0) && 
-                                    <CardFooter className="justify-center">
-                                        <div className="text-center">
-                                            <p className="text-xs text-neutral-400">Change your response first, then click Try Again</p>
-                                            <Button className="bg-teal-600 hover:bg-teal-500 mt-2" onClick={reviewUserResponse}>Try Again</Button>
-                                        </div>
-                                    </CardFooter>
-                                }
-                            </Card> :
-                            <Button className="bg-teal-600 hover:bg-teal-500 mt-4" onClick={reviewUserResponse} >Review with AI</Button>
-                    }
+                                                            ))}
+                                                        </ol>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                <p><b>Similarity:</b> {currentWord.similarity}%</p>
+                                                <p><b>Feedback:</b> {currentWord.userResult}</p>
+                                            </div>
+                                        )}
+                                    </CardContent>
 
-                </div>}
-            </div> : <Label className="text-neutral-500 italic">Your commonplace book is currently empty!</Label>}
+                                    {(currentWord.userGrammarMistakes.grammar_check.length > 0 || currentWord.similarity < 70.0) && (
+                                        <CardFooter className="justify-center">
+                                            <div className="text-center">
+                                                <p className="text-xs text-neutral-400">Change your response first, then click Try Again</p>
+                                                <Button className="mt-2 bg-teal-600 hover:bg-teal-500" onClick={reviewUserResponse}>Try Again</Button>
+                                            </div>
+                                        </CardFooter>
+                                    )}
+                                </Card>
+                            ) : (
+                                <Button className="bg-teal-600 hover:bg-teal-500" onClick={reviewUserResponse}>Review with AI</Button>
+                            )}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+            : <Label className="italic text-neutral-500">Your commonplace book is currently empty!</Label>}
         </div>
     )
 }
