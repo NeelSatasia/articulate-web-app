@@ -8,6 +8,7 @@ from fastapi.concurrency import run_in_threadpool
 from scipy import spatial
 from typing import Dict
 import ast
+import re
 
 load_dotenv()
 
@@ -359,3 +360,146 @@ async def verify_vocabulary_usage(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to verify usage: {str(e)}")
+
+
+@router.post("/sentence-vocabulary-suggestions", response_model=SentenceSimilarityResponse)
+async def sentence_vocabulary_suggestions(
+    payload: SentenceSimilarityRequest,
+    request: Request,
+    supabase=Depends(get_user_client)
+):
+    user = request.session.get('user')
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    input_text = payload.text.strip()
+
+    if not input_text:
+        raise HTTPException(status_code=400, detail="Input text cannot be empty")
+
+    try:
+        # Preserve sentence punctuation/spacing for UI while embedding only trimmed text.
+        sentence_chunks = [
+            match.group(0)
+            for match in re.finditer(r"[^.!?]+[.!?]*\s*", payload.text)
+            if match.group(0).strip()
+        ]
+
+        if not sentence_chunks:
+            raise HTTPException(status_code=400, detail="No valid sentences found in input text")
+
+        sentence_texts = [s.strip() for s in sentence_chunks]
+
+        user_vocab_result = await run_in_threadpool(
+            lambda: supabase.table("user_vocabulary")
+            .select("vocabulary_words(word, definition, embedding)")
+            .eq("user_id", user["user_id"])
+            .execute()
+        )
+        user_vocab_data = user_vocab_result.data or []
+
+        if not user_vocab_data:
+            raise HTTPException(status_code=404, detail="User has no vocabulary words")
+
+        valid_words = []
+        for item in user_vocab_data:
+            word_info = item.get("vocabulary_words")
+            embedding_value = word_info.get("embedding") if word_info else None
+
+            if not word_info or not word_info.get("word") or not embedding_value:
+                continue
+
+            parsed_embedding = embedding_value
+            if isinstance(embedding_value, str):
+                try:
+                    parsed_embedding = ast.literal_eval(embedding_value)
+                except (ValueError, SyntaxError):
+                    continue
+
+            if isinstance(parsed_embedding, list) and len(parsed_embedding) > 0:
+                valid_words.append({
+                    "word": word_info["word"],
+                    "definition": word_info.get("definition"),
+                    "embedding": parsed_embedding
+                })
+
+        if len(valid_words) == 0:
+            raise HTTPException(status_code=404, detail="User has no words with generated embeddings yet.")
+
+        sentence_embedding_result = await openai_client.embeddings.create(
+            input=sentence_texts,
+            model="text-embedding-3-small"
+        )
+
+        sentence_embeddings = [item.embedding for item in sentence_embedding_result.data]
+        sentence_matches = []
+
+        for sentence_index, (sentence_raw, sentence_embedding) in enumerate(zip(sentence_chunks, sentence_embeddings)):
+            best_word = None
+            best_definition = None
+            best_similarity = -1.0
+
+            for vocab in valid_words:
+                similarity = 1 - spatial.distance.cosine(sentence_embedding, vocab["embedding"])
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_word = vocab["word"]
+                    best_definition = vocab.get("definition")
+
+            sentence_matches.append({
+                "sentence_index": sentence_index,
+                "sentence": sentence_raw,
+                "suggested_word": best_word,
+                "suggested_definition": best_definition,
+                "similarity": round(best_similarity, 4) if best_similarity is not None else None,
+            })
+
+        top_matches = sorted(
+            sentence_matches,
+            key=lambda item: item["similarity"] if item["similarity"] is not None else -1,
+            reverse=True,
+        )[:5]
+
+        top_match_map = {
+            item["sentence_index"]: {
+                **item,
+                "highlight": True,
+                "highlight_rank": rank + 1,
+            }
+            for rank, item in enumerate(top_matches)
+        }
+
+        suggestions = []
+        for item in sentence_matches:
+            highlighted_item = top_match_map.get(item["sentence_index"])
+            if highlighted_item:
+                suggestions.append({
+                    "sentence_index": item["sentence_index"],
+                    "sentence": item["sentence"],
+                    "highlight": True,
+                    "suggested_word": item["suggested_word"],
+                    "suggested_definition": item.get("suggested_definition"),
+                    "similarity": item["similarity"],
+                    "highlight_rank": highlighted_item["highlight_rank"],
+                })
+            else:
+                suggestions.append({
+                    "sentence_index": item["sentence_index"],
+                    "sentence": item["sentence"],
+                    "highlight": False,
+                    "suggested_word": None,
+                    "suggested_definition": None,
+                    "similarity": item["similarity"],
+                    "highlight_rank": None,
+                })
+
+        return {
+            "text": payload.text,
+            "suggestions": suggestions
+        }
+
+    except HTTPException as http_exception:
+        raise http_exception
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process sentence suggestions: {str(e)}")

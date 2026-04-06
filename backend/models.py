@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal, List
+from typing import Literal, List, Optional
 
 class User(BaseModel):
     user_name: str
@@ -59,3 +59,19 @@ class WordUsageCheck(BaseModel):
 
 class UsageVerificationResult(BaseModel):
     results: List[WordUsageCheck]
+
+class SentenceSimilarityRequest(BaseModel):
+    text: str
+
+class SentenceVocabularySuggestion(BaseModel):
+    sentence_index: int
+    sentence: str
+    highlight: bool
+    suggested_word: Optional[str] = None
+    suggested_definition: Optional[str] = None
+    similarity: Optional[float] = None
+    highlight_rank: Optional[int] = None
+
+class SentenceSimilarityResponse(BaseModel):
+    text: str
+    suggestions: List[SentenceVocabularySuggestion]
