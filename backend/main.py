@@ -14,7 +14,7 @@ SECRET_SESSION_KEY = os.getenv("SECRET_SESSION_KEY")
 app = FastAPI()
 
 origins = [
-    "http://localhost:5173"
+    os.getenv("FRONTEND_URL")
 ]
 
 app.add_middleware(
