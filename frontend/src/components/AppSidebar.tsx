@@ -22,7 +22,7 @@ const AppSidebar = () => {
     const logoutUser = async () => {
             try {
                 localStorage.setItem(isAuth, falseStr)
-                window.location.href = "http://localhost:8000/auth/logout"
+                window.location.href = `${import.meta.env.VITE_BACKEND_URL}/auth/logout`
                 
             } catch(error) {
                 console.error("Error logging user out", error)

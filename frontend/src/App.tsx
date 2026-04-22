@@ -6,7 +6,7 @@ function App() {
     initAuthInLocalStorage()
 
     const googleSign = () => {
-        window.location.href =  "http://localhost:8000/auth/login"
+        window.location.href = `${import.meta.env.VITE_BACKEND_URL}/auth/login`
     }
 
     return (
