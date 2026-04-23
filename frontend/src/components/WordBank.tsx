@@ -13,7 +13,7 @@ import { Navigate } from 'react-router-dom'
 
 const WordBank = () => {
 
-    const [manualRendersCount, setManualRendersCount] = useState<number>(0)
+    const [_, setManualRendersCount] = useState<number>(0)
 
     const categories = useRef<Map<number, string>>(new Map())
     const wordBank = useRef<Map<number, Map<number, string>>>(new Map())
