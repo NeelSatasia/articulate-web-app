@@ -1,12 +1,13 @@
 import { initAuthInLocalStorage } from "./commons"
 import { Button } from "./components/ui/button"
+import { backendServiceURL } from "./commons"
 
 function App() {
 
     initAuthInLocalStorage()
 
     const googleSign = () => {
-        window.location.href = `${import.meta.env.VITE_BACKEND_URL}/auth/login`
+        window.location.href = `${backendServiceURL}/auth/login`
     }
 
     return (

@@ -16,13 +16,14 @@ import { Button } from "./ui/button"
 import { falseStr, isAuth, userName } from "../commons"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible"
 import { ChevronDown } from "lucide-react"
+import { backendServiceURL } from "../commons"
 
 const AppSidebar = () => {
 
     const logoutUser = async () => {
             try {
                 localStorage.setItem(isAuth, falseStr)
-                window.location.href = `${import.meta.env.VITE_BACKEND_URL}/auth/logout`
+                window.location.href = `${backendServiceURL}/auth/logout`
                 
             } catch(error) {
                 console.error("Error logging user out", error)

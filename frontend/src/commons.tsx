@@ -4,6 +4,7 @@ export const falseStr = "false"
 export const loadingStr = "Loading"
 export const savingStr = "Saving"
 export let userName = "userName"
+export const backendServiceURL = "https://articulate-app-backend-1024922675216.us-south1.run.app"
 
 export const initAuthInLocalStorage = () => {
     if (localStorage.getItem(isAuth) === null) {

@@ -1,7 +1,8 @@
 import axios from "axios"
+import { backendServiceURL } from "./commons"
 
 const api = axios.create({
-    baseURL: "http://localhost:8000",
+    baseURL: backendServiceURL,
     withCredentials: true
 })
 
