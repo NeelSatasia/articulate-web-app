@@ -158,27 +158,28 @@ const VocabularyRecall = () => {
                             style={{ width: `${progressPercent}%` }}
                         />
                     </div>
+
+                    <div className="flex flex-row gap-x-3">
+                        <Button variant="outline" onClick={prevWord} disabled={currentIdx <= 0 || loadingSentence}>Back</Button>
+                        <Button onClick={nextWord} disabled={loadingSentence || (currentIdx + 1 >= quizItems.length && remainingWords.length === 0)}>
+                            {currentIdx === -1 ? "Start" : "Next"}
+                        </Button>
+                    </div>
+
+                    {currentIdx === -1 && loadingSentence && <Spinner />}
+
+                    {currentIdx === -1 && !loadingSentence && (
+                        <p className="text-sm italic text-muted-foreground">
+                            {allVocabularyWords.length === 0
+                                ? "Your vocabulary collection is currently empty!"
+                                : "Click start to begin."}
+                        </p>
+                    )}
+
+                    {currentItem && loadingSentence && <Spinner />}
                 </CardContent>
             </Card>
 
-            <div className="flex flex-row gap-x-3">
-                <Button variant="outline" onClick={prevWord} disabled={currentIdx <= 0 || loadingSentence}>Back</Button>
-                <Button onClick={nextWord} disabled={loadingSentence || (currentIdx + 1 >= quizItems.length && remainingWords.length === 0)}>
-                    {currentIdx === -1 ? "Start" : "Next"}
-                </Button>
-            </div>
-
-            {currentIdx === -1 && loadingSentence && <Spinner />}
-
-            {currentIdx === -1 && !loadingSentence && (
-                <p className="text-sm italic text-muted-foreground">
-                    {allVocabularyWords.length === 0
-                        ? "Your vocabulary collection is currently empty!"
-                        : "Click start to begin."}
-                </p>
-            )}
-
-            {currentItem && loadingSentence && <Spinner />}
 
             {currentItem && !loadingSentence && (
                 <Card>

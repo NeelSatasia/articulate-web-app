@@ -95,7 +95,7 @@ const FreeWriting = () => {
                 disabled={isReviewed}
             />
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 justify-center">
                 <Button className="w-fit" onClick={reviewRawInput} disabled={loadingData || !rawInput.trim() || isReviewed}>
                     {loadingData ? <Spinner /> : "Review"}
                 </Button>

@@ -18,7 +18,6 @@ const Vocabulary = () => {
     const [delWordsLoading, setDelWordsLoading] = useState<boolean>(false)
     const [newVocabWords, setNewVocabWords] = useState<Set<string>>(new Set())
     const [selectedWordIds, setSelectedWordIds] = useState<Set<number>>(new Set())
-    const [expandedWordId, setExpandedWordId] = useState<number | null>(null)
 
     useEffect(() => {
         const fetchVocabulary = async () => {
@@ -131,10 +130,6 @@ const Vocabulary = () => {
         })
     }
 
-    const toggleExpandedCard = (wordId: number) => {
-        setExpandedWordId(prev => (prev === wordId ? null : wordId))
-    }
-
     if (loading) {
         return <Loading spinnerAction="Loading"/>
     }
@@ -145,9 +140,9 @@ const Vocabulary = () => {
 
     return (
         <div className="flex flex-col p-4 gap-y-4">
-            <h1 className="text-2xl mb-4">Your Vocabulary Collection</h1>
+            <h1 className="text-2xl mb-4 w-fit justify-start">Your Vocabulary Collection</h1>
 
-            <div className="flex gap-x-2">
+            <div className="flex gap-x-2 w-full">
                 {addWordLoading ? <Spinner /> : <Button key="add-new-vocabulary-word" onClick={addNewVocabularyWordToList} disabled={delWordsLoading || newVocabWords.size >= 10} >Add</Button>}
 
                 <Input 
@@ -162,22 +157,23 @@ const Vocabulary = () => {
 
                 
             </div>
+            
+            <div className="flex flex-col justify-center items-center gap-y-3">
+                {newVocabWords.size > 0 && 
+                <div className="flex justify-center gap-y-3">
+                    {Array.from(newVocabWords).map(word => (
+                        <Button key={word} size="sm" className="mr-2 bg-white hover:bg-white text-color-primary hover:line-through border border-black hover:text-red-500 hover:border-red-500" onClick={() => deleteNewWord(word)}>{word}</Button>
+                    ))}
+                </div>}
 
-            {newVocabWords.size > 0 && 
-            <div className="flex">
-                {Array.from(newVocabWords).map(word => (
-                    <Button key={word} size="sm" className="mr-2 bg-white hover:bg-white text-color-primary hover:line-through border border-black hover:text-red-500 hover:border-red-500" onClick={() => deleteNewWord(word)}>{word}</Button>
-                ))}
-            </div>}
-
-            {newVocabWords.size > 0 && <Button key="get-definitions-btn" className="w-fit bg-teal-600 hover:bg-teal-500" onClick={addNewVocabularyWords}>Get Info</Button>}
+                {newVocabWords.size > 0 && <Button key="get-definitions-btn" className="w-fit bg-teal-600 hover:bg-teal-500" onClick={addNewVocabularyWords}>Get Info</Button>}
+            </div>
 
             {vocabulary.length === 0 ? (
                 <div className="w-full h-full justify-center items-center">You have no vocabulary words yet.</div>
             ) :
                 <div className="w-full">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">Click a card to reveal definition, example, and level.</p>
+                    <div className="flex justify-end">
                         {delWordsLoading ? (
                             <Spinner />
                         ) : (
@@ -195,20 +191,17 @@ const Vocabulary = () => {
 
                     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                         {vocabulary.map(vocabWord => {
-                            const isExpanded = expandedWordId === vocabWord.word_id
                             const isSelected = selectedWordIds.has(vocabWord.word_id)
 
                             return (
                                 <Card
                                     key={"vocabulary-card-" + vocabWord.word_id}
-                                    className={`cursor-pointer transition-all ${isSelected ? "border-red-300" : ""}`}
-                                    onClick={() => toggleExpandedCard(vocabWord.word_id)}
+                                    className={`transition-all ${isSelected ? "border-red-300" : ""}`}
                                 >
                                     <CardContent className="p-4">
                                         <div className="flex items-center justify-between gap-4">
                                             <div>
                                                 <p className="text-lg font-semibold">{vocabWord.word}</p>
-                                                <p className="text-xs text-muted-foreground">{isExpanded ? "Click to collapse" : "Click to reveal details"}</p>
                                             </div>
 
                                             <div
@@ -226,13 +219,11 @@ const Vocabulary = () => {
                                             </div>
                                         </div>
 
-                                        <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? "grid-rows-[1fr] mt-4" : "grid-rows-[0fr]"}`}>
-                                            <div className="overflow-hidden">
-                                                <div className="space-y-3 rounded-md border bg-muted/30 p-3 text-sm">
-                                                    <p><b>Definition:</b> {vocabWord.definition}</p>
-                                                    <p><b>Example:</b> {vocabWord.example || "No example available yet."}</p>
-                                                    <p><b>Level:</b> {vocabWord.word_level}</p>
-                                                </div>
+                                        <div className="mt-4">
+                                            <div className="space-y-3 rounded-md border bg-muted/30 p-3 text-sm">
+                                                <p><b>Definition:</b> {vocabWord.definition}</p>
+                                                <p><b>Example:</b> {vocabWord.example || "No example available yet."}</p>
+                                                <p><b>Level:</b> {vocabWord.word_level}</p>
                                             </div>
                                         </div>
                                     </CardContent>
