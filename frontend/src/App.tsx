@@ -18,10 +18,10 @@ function App() {
                         Learn with daily writing practice
                     </p>
                     <h1 className="text-4xl font-semibold leading-tight md:text-5xl tracking-wider">
-                        Become Articulate...
+                        Become Articulate
                     </h1>
                     <p className="mt-4 text-base text-muted-foreground md:text-lg">
-                        ...lets you store creative phrases and vocabulary words which you can utilize to build stronger English expressions through short, guided activities that combine vocabulary growth, sentence crafting, and writing feedback.
+                        A platform to master the usage of your personal collection of articulate phrases and words.
                     </p>
 
                     <div className="mt-6 grid gap-3 sm:grid-cols-3">
