@@ -13,7 +13,7 @@ router = APIRouter(prefix="/vocabulary", tags=["Vocabulary"])
 async def user_vocabulary(supabase=Depends(get_user_client)):
     
     try:
-        result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").select("word_id, vocabulary_words(word, definition, word_level)").order("word_id").execute())
+        result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").select("word_id, vocabulary_words(word, definition, example, word_level)").order("word_id").execute())
 
         if result:
 
@@ -24,6 +24,7 @@ async def user_vocabulary(supabase=Depends(get_user_client)):
                     "word_id": item["word_id"], 
                     "word": item["vocabulary_words"]["word"], 
                     "definition": item["vocabulary_words"]["definition"], 
+                    "example": item["vocabulary_words"]["example"],
                     "word_level": item["vocabulary_words"]["word_level"]
                 })
 
