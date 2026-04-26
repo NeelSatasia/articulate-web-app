@@ -1,0 +1,1 @@
+ALTER TABLE word_bank ADD embedding vector;
