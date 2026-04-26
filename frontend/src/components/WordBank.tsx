@@ -6,7 +6,6 @@ import "/src/WordBank.css"
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
-import { Label } from './ui/label'
 import { falseStr, initAuthInLocalStorage, isAuth, loadingStr, savingStr, setAuthInLocalStorage, trueStr, type Category, type WordPhrase } from '../commons'
 import Loading from './Loading'
 import { Navigate } from 'react-router-dom'
