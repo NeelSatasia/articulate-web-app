@@ -6,7 +6,7 @@ from userclient import get_user_client
 from models import *
 from fastapi.concurrency import run_in_threadpool
 from scipy import spatial
-from typing import Dict
+from typing import Dict, List
 import ast
 import re
 
@@ -133,6 +133,119 @@ async def generate_sentence_for_word(vocabulary_word: str, supabase=Depends(get_
         raise HTTPException(status_code=400, detail=str(e))
 
 # POST ---------------------------------------------------------------------------------------------------------------------------------------
+
+@router.post("/word-phrases")
+async def new_word_phrases(
+    request: Request,
+    new_data: Dict[int, List[str]],
+    supabase=Depends(get_user_client)
+):
+    user = request.session.get("user")
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        rows = []
+
+        for word_category_id, word_phrases in new_data.items():
+            category_id = int(word_category_id)
+
+            for word_phrase in word_phrases:
+                cleaned_phrase = word_phrase.strip()
+
+                if not cleaned_phrase:
+                    continue
+
+                rows.append({
+                    "user_id": user["user_id"],
+                    "word_category_id": category_id,
+                    "word_phrase": cleaned_phrase,
+                })
+
+        if not rows:
+            return []
+
+        embedding_response = await openai_client.embeddings.create(
+            model="text-embedding-3-small",
+            input=[row["word_phrase"] for row in rows],
+        )
+
+        for idx, row in enumerate(rows):
+            row["embedding"] = embedding_response.data[idx].embedding
+
+        resp_data = await run_in_threadpool(
+            lambda: supabase.table("word_bank").insert(rows).execute()
+        )
+
+        if resp_data:
+            return resp_data.data
+
+        return []
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.put("/word-phrases")
+async def edit_word_phrases(
+    request: Request,
+    modified_data: Dict[int, Dict[int, str]],
+    supabase=Depends(get_user_client)
+):
+    user = request.session.get("user")
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        edits = []
+
+        for word_category_id, word_phrases in modified_data.items():
+            category_id = int(word_category_id)
+
+            for word_id, word_phrase in word_phrases.items():
+                cleaned_phrase = word_phrase.strip()
+
+                if not cleaned_phrase:
+                    continue
+
+                edits.append({
+                    "word_id": int(word_id),
+                    "word_category_id": category_id,
+                    "word_phrase": cleaned_phrase,
+                })
+
+        if not edits:
+            return []
+
+        embedding_response = await openai_client.embeddings.create(
+            model="text-embedding-3-small",
+            input=[item["word_phrase"] for item in edits],
+        )
+
+        updates = []
+
+        for idx, item in enumerate(edits):
+            updates.append({
+                "word_id": item["word_id"],
+                "user_id": user["user_id"],
+                "word_category_id": item["word_category_id"],
+                "word_phrase": item["word_phrase"],
+                "embedding": embedding_response.data[idx].embedding,
+            })
+
+        await run_in_threadpool(
+            lambda: supabase.table("word_bank")
+            .upsert(updates, on_conflict="word_id")
+            .execute()
+        )
+
+        return {"updated_count": len(edits)}
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.post("/vocabulary")
 async def vocabulary_words(
@@ -377,7 +490,7 @@ async def sentence_vocabulary_suggestions(
 
     if not input_text:
         raise HTTPException(status_code=400, detail="Input text cannot be empty")
-
+    
     try:
         # Preserve sentence punctuation/spacing for UI while embedding only trimmed text.
         sentence_chunks = [
@@ -503,3 +616,125 @@ async def sentence_vocabulary_suggestions(
         raise http_exception
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process sentence suggestions: {str(e)}")
+
+
+
+@router.post("/thesaurus-search", response_model=ThesaurusSearchResponse)
+async def thesaurus_search(
+    payload: ThesaurusSearchRequest,
+    request: Request,
+    supabase=Depends(get_user_client)
+):
+    user = request.session.get("user")
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    query_text = payload.query.strip()
+    if not query_text:
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+
+    try:
+        query_embedding_result = await openai_client.embeddings.create(
+            input=query_text,
+            model="text-embedding-3-small"
+        )
+        query_embedding = query_embedding_result.data[0].embedding
+
+        word_phrase_result = await run_in_threadpool(
+            lambda: supabase.table("word_bank")
+            .select("word_phrase, embedding")
+            .eq("user_id", user["user_id"])
+            .execute()
+        )
+        word_phrase_data = word_phrase_result.data or []
+
+        user_vocab_result = await run_in_threadpool(
+            lambda: supabase.table("user_vocabulary")
+            .select("vocabulary_words(word, embedding)")
+            .eq("user_id", user["user_id"])
+            .execute()
+        )
+        user_vocab_data = user_vocab_result.data or []
+
+        candidates = []
+
+        for item in word_phrase_data:
+            phrase = (item.get("word_phrase") or "").strip()
+            embedding_value = item.get("embedding")
+
+            if not phrase or not embedding_value:
+                continue
+
+            parsed_embedding = embedding_value
+            if isinstance(embedding_value, str):
+                try:
+                    parsed_embedding = ast.literal_eval(embedding_value)
+                except (ValueError, SyntaxError):
+                    continue
+
+            if not isinstance(parsed_embedding, list) or len(parsed_embedding) == 0:
+                continue
+
+            candidates.append({
+                "source": "word_phrase",
+                "text": phrase,
+                "embedding": parsed_embedding,
+            })
+
+        for item in user_vocab_data:
+            word_info = item.get("vocabulary_words")
+            if not word_info:
+                continue
+
+            vocab_word = (word_info.get("word") or "").strip()
+            embedding_value = word_info.get("embedding")
+
+            if not vocab_word or not embedding_value:
+                continue
+
+            parsed_embedding = embedding_value
+            if isinstance(embedding_value, str):
+                try:
+                    parsed_embedding = ast.literal_eval(embedding_value)
+                except (ValueError, SyntaxError):
+                    continue
+
+            if not isinstance(parsed_embedding, list) or len(parsed_embedding) == 0:
+                continue
+
+            candidates.append({
+                "source": "vocabulary_word",
+                "text": vocab_word,
+                "embedding": parsed_embedding,
+            })
+
+        if len(candidates) == 0:
+            return {
+                "query": query_text,
+                "strongest_match": None,
+                "top_matches": [],
+            }
+
+        scored_matches = []
+        for candidate in candidates:
+            similarity = 1 - spatial.distance.cosine(query_embedding, candidate["embedding"])
+            scored_matches.append({
+                "source": candidate["source"],
+                "text": candidate["text"],
+                "similarity": round(float(similarity), 4),
+            })
+
+        scored_matches.sort(key=lambda x: x["similarity"], reverse=True)
+
+        strongest_match = scored_matches[0]
+        top_matches = scored_matches[:5]
+
+        return {
+            "query": query_text,
+            "strongest_match": strongest_match,
+            "top_matches": top_matches,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to run thesaurus search: {str(e)}")
