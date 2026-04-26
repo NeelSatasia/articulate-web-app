@@ -18,7 +18,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collap
 import { ChevronDown } from "lucide-react"
 import { backendServiceURL } from "../commons"
 
-const AppSidebar = () => {
+interface AppSidebarProps {
+    isThesaurusOpen: boolean
+    onToggleThesaurus: () => void
+}
+
+const AppSidebar = ({ isThesaurusOpen, onToggleThesaurus }: AppSidebarProps) => {
 
     const logoutUser = async () => {
             try {
@@ -96,6 +101,15 @@ const AppSidebar = () => {
                                         </SidebarMenuSub>
                                     </CollapsibleContent>
                                 </Collapsible>
+                            </SidebarMenuItem>
+
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    className={`text-sm ${isThesaurusOpen ? "border-2 border-primary" : ""}`}
+                                    onClick={onToggleThesaurus}
+                                >
+                                    {"Thesaurus Search"}
+                                </SidebarMenuButton>
                             </SidebarMenuItem>
 
                         </SidebarMenu>

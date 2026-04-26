@@ -75,3 +75,19 @@ class SentenceVocabularySuggestion(BaseModel):
 class SentenceSimilarityResponse(BaseModel):
     text: str
     suggestions: List[SentenceVocabularySuggestion]
+
+
+class ThesaurusSearchRequest(BaseModel):
+    query: str
+
+
+class ThesaurusSearchMatch(BaseModel):
+    source: Literal["word_phrase", "vocabulary_word"]
+    text: str
+    similarity: float
+
+
+class ThesaurusSearchResponse(BaseModel):
+    query: str
+    strongest_match: Optional[ThesaurusSearchMatch] = None
+    top_matches: List[ThesaurusSearchMatch]
