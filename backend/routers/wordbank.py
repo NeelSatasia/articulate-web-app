@@ -72,30 +72,6 @@ async def current_word_phrases(supabase=Depends(get_user_client)):
     
 # POST ---------------------------------------------------------------------------------------------------------------------------------------
 
-@router.post("/word-phrases")
-async def new_word_phrases(request: Request, new_data: Dict[int, List[str]], supabase=Depends(get_user_client)):
-
-    try:
-        rows = []
-        
-        for word_category_id, word_phrases in new_data.items():
-            for word_phrase in word_phrases:
-                rows.append({
-                        "user_id": request.session.get('user')["user_id"],
-                        "word_category_id": word_category_id,
-                        "word_phrase": word_phrase
-                    })
-                
-        if rows:
-            resp_data = await run_in_threadpool(lambda: supabase.table("word_bank").insert(rows).execute())
-
-            if resp_data:
-                return resp_data.data
-    
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
-
 @router.post("/categories")
 async def new_user_word_categories(new_word_categories: List[str], request: Request, supabase=Depends(get_user_client)):
     user = request.session.get('user')
@@ -112,32 +88,6 @@ async def new_user_word_categories(new_word_categories: List[str], request: Requ
         raise HTTPException(status_code=400, detail=str(e))
     
 # PUT ---------------------------------------------------------------------------------------------------------------------------------------
-
-@router.put("/word-phrases")
-async def edit_word_phrases(modified_data: Dict[int, Dict[int, str]], supabase=Depends(get_user_client)):
-    
-    try:
-        word_ids = []
-        category_ids = []
-        phrases = []
-        
-        for word_category_id, word_phrases in modified_data.items():
-            cat_id = int(word_category_id)
-            
-            for word_id, word_phrase in word_phrases.items():
-                word_ids.append(int(word_id))
-                category_ids.append(cat_id)
-                phrases.append(word_phrase)
-
-        await run_in_threadpool(lambda: supabase.rpc("update_word_phrases", {
-                "p_word_ids": word_ids,
-                "p_category_ids": category_ids,
-                "p_phrases": phrases
-            }).execute())
-
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
 
 @router.put("/categories")
 async def edit_word_categories(modified_data: Dict[int, str], supabase=Depends(get_user_client)):
