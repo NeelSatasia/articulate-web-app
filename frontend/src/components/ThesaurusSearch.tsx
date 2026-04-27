@@ -31,6 +31,8 @@ export function ThesaurusSearch({ isOpen }: ThesaurusSidebarProps) {
     const [searching, setSearching] = useState<boolean>(false)
     const [result, setResult] = useState<ThesaurusResponse | null>(null)
 
+    const toPercentage = (value: number) => `${(value * 100).toFixed(2)}%`
+
     const searchThesaurus = async () => {
         const cleaned = query.trim()
 
@@ -102,7 +104,7 @@ export function ThesaurusSearch({ isOpen }: ThesaurusSidebarProps) {
                                             <>
                                                 <p className="mt-1 text-sm font-semibold">{result.strongest_match.text}</p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {sourceLabel[result.strongest_match.source]} | Similarity: {result.strongest_match.similarity}
+                                                    {sourceLabel[result.strongest_match.source]} | Similarity: {toPercentage(result.strongest_match.similarity)}
                                                 </p>
                                             </>
                                         ) : (
@@ -130,7 +132,7 @@ export function ThesaurusSearch({ isOpen }: ThesaurusSidebarProps) {
                                                     >
                                                         <p className="text-sm">{match.text}</p>
                                                         <p className="text-xs text-muted-foreground">
-                                                            {sourceLabel[match.source]} | Similarity: {match.similarity}
+                                                            {sourceLabel[match.source]} | Similarity: {toPercentage(match.similarity)}
                                                         </p>
                                                     </div>
                                                 ))}
