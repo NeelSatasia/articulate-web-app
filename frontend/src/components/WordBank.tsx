@@ -397,7 +397,7 @@ const WordBank = () => {
 
                     <div className="mt-4 flex flex-wrap items-center gap-2">
                         <Button key="edit-wordbank" size="sm" onClick={changeEditMode}>
-                            {editMode ? "Save changes" : "Edit"}
+                            {editMode ? "Save" : "Edit"}
                         </Button>
 
                         {editMode && (
