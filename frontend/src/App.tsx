@@ -42,8 +42,9 @@ function App() {
 
                 <section className="w-full max-w-md rounded-xl border bg-card p-8 shadow-sm">
                     <h2 className="text-2xl font-semibold">Welcome</h2>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                        Sign in to save your progress and continue your writing journey.
+                    
+                    <p className="mt-3 text-sm text-muted-foreground">
+                        To get started, sign in through Google and start storing vocabulary words and creative phrases you want to internalize in your day-to-day conversations and writing. Then, practice them in the app's playground.
                     </p>
                     <Button
                         onClick={googleSign}
