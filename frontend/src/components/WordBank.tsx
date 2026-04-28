@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, type ChangeEvent } from 'react'
 import api from '../api'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion'
 import { Table, TableBody, TableCell, TableRow } from './ui/table'
@@ -11,6 +11,12 @@ import Loading from './Loading'
 import { Navigate } from 'react-router-dom'
 
 const WordBank = () => {
+
+    type ImportedWordPhrase = {
+        id: number
+        text: string
+        categoryId: string
+    }
 
     const [_, setManualRendersCount] = useState<number>(0)
 
@@ -36,6 +42,12 @@ const WordBank = () => {
 
     const [loading, setLoading] = useState<boolean>(true)
     const [saving, setSaving] = useState<boolean>(false)
+    const [importedWordPhrases, setImportedWordPhrases] = useState<ImportedWordPhrase[]>([])
+    const [showImportPanel, setShowImportPanel] = useState<boolean>(false)
+    const [importError, setImportError] = useState<string>("")
+    const [bulkAssignCategoryId, setBulkAssignCategoryId] = useState<string>("")
+
+    const importFileInputRef = useRef<HTMLInputElement>(null)
 
     initAuthInLocalStorage()
 
@@ -182,6 +194,131 @@ const WordBank = () => {
         newWordPhrases.current.delete(categoryID)
         categories.current.delete(categoryID)
         keysOfNewCategories.current.delete(categoryName)
+    }
+
+    const getAvailableCategoryEntries = () => {
+        return Array.from(categories.current).filter(([categoryID]) => !deleteExistingCategories.current.has(categoryID))
+    }
+
+    const openImportFilePicker = () => {
+        setImportError("")
+        importFileInputRef.current?.click()
+    }
+
+    const handleImportFile = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+
+        if (!file) {
+            return
+        }
+
+        setImportError("")
+
+        const maxFileSizeInBytes = 5 * 1024 * 1024
+        if (file.size > maxFileSizeInBytes) {
+            setImportError("File is too large. Maximum file size is 5 MB.")
+            e.target.value = ""
+            return
+        }
+
+        if (!file.name.toLowerCase().endsWith(".txt")) {
+            setImportError("Only .txt files are supported.")
+            e.target.value = ""
+            return
+        }
+
+        const availableCategories = getAvailableCategoryEntries()
+        if (availableCategories.length === 0) {
+            setImportError("Create at least one category before importing word-phrases.")
+            e.target.value = ""
+            return
+        }
+
+        try {
+            const fileContent = await file.text()
+            const uniqueLines = Array.from(
+                new Set(
+                    fileContent
+                        .split(/\r?\n/)
+                        .map(line => line.trim())
+                        .filter(line => line.length > 0)
+                )
+            )
+
+            if (uniqueLines.length === 0) {
+                setImportError("The selected file is empty.")
+                e.target.value = ""
+                return
+            }
+
+            const defaultCategoryId = String(availableCategories[0][0])
+
+            setImportedWordPhrases(
+                uniqueLines.map((line, index) => ({
+                    id: index,
+                    text: line,
+                    categoryId: defaultCategoryId,
+                }))
+            )
+            setShowImportPanel(true)
+        } catch (error) {
+            console.error("Error importing txt file", error)
+            setImportError("Failed to read file. Please try again.")
+        } finally {
+            e.target.value = ""
+        }
+    }
+
+    const changeImportedCategory = (itemId: number, categoryId: string) => {
+        setImportedWordPhrases(prev =>
+            prev.map(item => (item.id === itemId ? { ...item, categoryId } : item))
+        )
+    }
+
+    const applyBulkCategoryAssignment = () => {
+        if (!bulkAssignCategoryId.trim()) {
+            setImportError("Please select a category to apply to all items.")
+            return
+        }
+
+        setImportedWordPhrases(prev =>
+            prev.map(item => ({ ...item, categoryId: bulkAssignCategoryId }))
+        )
+        setBulkAssignCategoryId("")
+    }
+
+    const applyImportedWordPhrases = () => {
+        if (importedWordPhrases.length === 0) {
+            setImportError("No word-phrases to import.")
+            return
+        }
+
+        if (importedWordPhrases.some(item => item.categoryId.trim() === "")) {
+            setImportError("Please select a category for each imported line.")
+            return
+        }
+
+        importedWordPhrases.forEach((item) => {
+            const categoryId = parseInt(item.categoryId, 10)
+
+            if (!newWordPhrases.current.has(categoryId)) {
+                newWordPhrases.current.set(categoryId, [])
+            }
+
+            newWordPhrases.current.get(categoryId)?.push(item.text)
+        })
+
+        setImportedWordPhrases([])
+        setShowImportPanel(false)
+        setImportError("")
+        setManualRendersCount(prev => prev + 1)
+    }
+
+    const cancelImportedWordPhrases = () => {
+        setImportedWordPhrases([])
+        setShowImportPanel(false)
+        setImportError("")
+        setBulkAssignCategoryId("")
     }
 
     const changeEditMode = async () => {
@@ -383,6 +520,10 @@ const WordBank = () => {
         deleteExistingWordPhrases.current.clear()
         deleteExistingCategories.current.clear()
         keysOfNewCategories.current.clear()
+        setImportedWordPhrases([])
+        setShowImportPanel(false)
+        setImportError("")
+        setBulkAssignCategoryId("")
     }
     
 
@@ -420,8 +561,84 @@ const WordBank = () => {
                                 {addNewCategoryMode ? "Add" : "New Category"}
                             </Button>
                         )}
+
+                        {editMode && (
+                            <Button key="import-word-phrases" size="sm" variant="outline" onClick={openImportFilePicker}>
+                                Import .txt
+                            </Button>
+                        )}
+
+                        <input
+                            ref={importFileInputRef}
+                            type="file"
+                            accept=".txt,text/plain"
+                            className="hidden"
+                            onChange={handleImportFile}
+                        />
                     </div>
+
+                    {importError && (
+                        <p className="mt-3 text-sm text-red-600">{importError}</p>
+                    )}
                 </div>
+
+                {showImportPanel && (
+                    <div className="mb-5 rounded-lg border bg-card p-4">
+                        <h2 className="text-lg font-semibold">Assign Categories Before Import</h2>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Each line from your file is listed below. Select a category for every item before adding to your word bank.
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap items-end gap-2">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-sm font-medium">Assign all to category:</label>
+                                <select
+                                    className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                    value={bulkAssignCategoryId}
+                                    onChange={(e) => setBulkAssignCategoryId(e.target.value)}
+                                >
+                                    <option value="">Select a category...</option>
+                                    {getAvailableCategoryEntries().map(([categoryId, categoryName]) => (
+                                        <option key={`bulk-category-option-${categoryId}`} value={String(categoryId)}>
+                                            {categoryName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <Button size="sm" variant="secondary" onClick={applyBulkCategoryAssignment}>
+                                Apply to All
+                            </Button>
+                        </div>
+
+                        <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
+                            {importedWordPhrases.map((item) => (
+                                <div key={`imported-word-phrase-${item.id}`} className="grid grid-cols-1 gap-2 rounded-md border p-2 sm:grid-cols-[2fr,1fr] sm:items-center">
+                                    <p className="text-sm">{item.text}</p>
+                                    <select
+                                        className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                        value={item.categoryId}
+                                        onChange={(event) => changeImportedCategory(item.id, event.target.value)}
+                                    >
+                                        {getAvailableCategoryEntries().map(([categoryId, categoryName]) => (
+                                            <option key={`import-category-option-${categoryId}`} value={String(categoryId)}>
+                                                {categoryName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500" onClick={applyImportedWordPhrases}>
+                                Add to Draft Changes
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={cancelImportedWordPhrases}>
+                                Cancel Import
+                            </Button>
+                        </div>
+                    </div>
+                )}
 
                 {categories.current.size == 0 ? (
                     <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
