@@ -42,32 +42,49 @@ async def user_vocabulary(supabase=Depends(get_user_client)):
 async def user_dashboard(supabase=Depends(get_user_client)):
 
     try:
-        active_result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").select("vocab_word_id, word_id").eq("display_status", 1).limit(3).execute())
+        active_res = await run_in_threadpool(
+            lambda: supabase.table("user_vocabulary")
+            .select("vocab_word_id, word_id")
+            .eq("display_status", 1)
+            .execute()
+        )
         
-        active_rows = active_result.data
+        active_rows = active_res.data or []
 
         if not active_rows:
-            pool_result = await run_in_threadpool(lambda: supabase.table("user_vocabulary").select("vocab_word_id, word_id").eq("display_status", 2).execute())
+            new_words_res = await run_in_threadpool(
+                lambda: supabase.table("user_vocabulary")
+                .select("vocab_word_id, word_id")
+                .eq("curr_duration_days", 0)
+                .eq("next_duration_days", 0)
+                .order("vocab_word_id", desc=False)
+                .limit(3)
+                .execute()
+            )
             
-            pool_rows = pool_result.data
-            
-            if pool_rows:
-                num_to_pick = min(3, len(pool_rows))
-                selected_rows = random.sample(pool_rows, num_to_pick)
+            if new_words_res.data:
+                selected_ids = [row["vocab_word_id"] for row in new_words_res.data]
                 
-                selected_vocab_ids = [row["vocab_word_id"] for row in selected_rows]
-                
-                await run_in_threadpool(lambda: supabase.table("user_vocabulary").update({"display_status": 1}).in_("vocab_word_id", selected_vocab_ids).execute())
-                
-                active_rows = selected_rows
+                await run_in_threadpool(
+                    lambda: supabase.table("user_vocabulary")
+                    .update({
+                        "display_status": 1,
+                        "curr_duration_days": 3
+                    })
+                    .in_("vocab_word_id", selected_ids)
+                    .execute()
+                )
+                active_rows = new_words_res.data
 
         if active_rows:
             word_ids = [row["word_id"] for row in active_rows]
-
-            words_result = await run_in_threadpool(lambda: supabase.table("vocabulary_words").select("*").in_("word_id", word_ids).execute())
-
-            if words_result:
-                return words_result.data
+            words_result = await run_in_threadpool(
+                lambda: supabase.table("vocabulary_words")
+                .select("*")
+                .in_("word_id", word_ids)
+                .execute()
+            )
+            return words_result.data
 
         return []
 

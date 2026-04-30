@@ -44,28 +44,44 @@ async def user_word_categories(supabase=Depends(get_user_client)):
 
 @router.get("/dashboard")
 async def current_word_phrases(supabase=Depends(get_user_client)):
-    
     try:
-        active_result = await run_in_threadpool(lambda: supabase.table("word_bank").select("*").eq("display_status", 1).limit(5).execute())
+        target_limit = 5
         
-        active_rows = active_result.data
+        active_res = await run_in_threadpool(
+            lambda: supabase.table("word_bank")
+            .select("*")
+            .eq("display_status", 1)
+            .execute()
+        )
+        
+        active_rows = active_res.data or []
 
         if not active_rows:
-            pool_result = await run_in_threadpool(lambda: supabase.table("word_bank").select("*").eq("display_status", 2).execute())
+            new_phrases_res = await run_in_threadpool(
+                lambda: supabase.table("word_bank")
+                .select("*")
+                .eq("curr_duration_days", 0)
+                .eq("next_duration_days", 0)
+                .order("word_id", desc=False)
+                .limit(target_limit)
+                .execute()
+            )
             
-            pool_rows = pool_result.data
-            
-            if pool_rows:
-                num_to_pick = min(5, len(pool_rows))
-                selected_rows = random.sample(pool_rows, num_to_pick)
+            if new_phrases_res.data:
+                selected_ids = [row["word_id"] for row in new_phrases_res.data]
                 
-                selected_word_ids = [row["word_id"] for row in selected_rows]
-                
-                await run_in_threadpool(lambda: supabase.table("word_bank").update({"display_status": 1}).in_("word_id", selected_word_ids).execute())
-                
-                active_rows = selected_rows
+                await run_in_threadpool(
+                    lambda: supabase.table("word_bank")
+                    .update({
+                        "display_status": 1,
+                        "curr_duration_days": 3
+                    })
+                    .in_("word_id", selected_ids)
+                    .execute()
+                )
+                active_rows = new_phrases_res.data
 
-        return active_rows if active_rows else []
+        return active_rows
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
