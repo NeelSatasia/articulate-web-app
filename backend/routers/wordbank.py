@@ -74,7 +74,8 @@ async def current_word_phrases(supabase=Depends(get_user_client)):
                     lambda: supabase.table("word_bank")
                     .update({
                         "display_status": 1,
-                        "curr_duration_days": 3
+                        "curr_duration_days": 3,
+                        "next_duration_days": 3
                     })
                     .in_("word_id", selected_ids)
                     .execute()

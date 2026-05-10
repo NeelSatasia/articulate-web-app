@@ -69,7 +69,8 @@ async def user_dashboard(supabase=Depends(get_user_client)):
                     lambda: supabase.table("user_vocabulary")
                     .update({
                         "display_status": 1,
-                        "curr_duration_days": 3
+                        "curr_duration_days": 3,
+                        "next_duration_days": 3
                     })
                     .in_("vocab_word_id", selected_ids)
                     .execute()
