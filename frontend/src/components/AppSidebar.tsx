@@ -8,22 +8,14 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
-    SidebarMenuSub,
-    SidebarMenuSubItem
 } from "@/components/ui/sidebar"
 import { Link } from "react-router-dom"
 import { Button } from "./ui/button"
 import { falseStr, isAuth, userName } from "../commons"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible"
-import { ChevronDown } from "lucide-react"
 import { backendServiceURL } from "../commons"
 
-interface AppSidebarProps {
-    isThesaurusOpen: boolean
-    onToggleThesaurus: () => void
-}
 
-const AppSidebar = ({ isThesaurusOpen, onToggleThesaurus }: AppSidebarProps) => {
+const AppSidebar = () => {
 
     const logoutUser = async () => {
             try {
@@ -54,61 +46,7 @@ const AppSidebar = ({ isThesaurusOpen, onToggleThesaurus }: AppSidebarProps) => 
 
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild className="text-sm">
-                                    <Link to="/wordbank">Commonplace Book</Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-
-                            <SidebarMenuItem>
-                                <SidebarMenuButton asChild className="text-sm">
-                                    <Link to="/vocabulary">Vocabulary</Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-
-                            <SidebarMenuItem>
-                                <Collapsible defaultOpen className="group/collapsible">
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuButton>
-                                            Playground
-                                            <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                                        </SidebarMenuButton>
-                                    </CollapsibleTrigger>
-
-                                    <CollapsibleContent>
-                                        <SidebarMenuSub>
-                                            <SidebarMenuSubItem>
-                                                <SidebarMenuButton asChild>
-                                                    <Link to="/sentence-crafting">Sentence Crafting</Link>
-                                                </SidebarMenuButton>
-                                            </SidebarMenuSubItem>
-
-                                            <SidebarMenuSubItem>
-                                                <SidebarMenuButton asChild>
-                                                    <Link to="/vocabulary-recall">Vocabulary Recall</Link>
-                                                </SidebarMenuButton>
-                                            </SidebarMenuSubItem>
-
-                                            <SidebarMenuSubItem>
-                                                <SidebarMenuButton asChild>
-                                                    <Link to="/essence-writing">Essence Writing</Link>
-                                                </SidebarMenuButton>
-                                            </SidebarMenuSubItem>
-
-                                            <SidebarMenuSubItem>
-                                                <SidebarMenuButton asChild>
-                                                    <Link to="/free-writing">Free Writing</Link>
-                                                </SidebarMenuButton>
-                                            </SidebarMenuSubItem>
-                                        </SidebarMenuSub>
-                                    </CollapsibleContent>
-                                </Collapsible>
-                            </SidebarMenuItem>
-
-                            <SidebarMenuItem>
-                                <SidebarMenuButton
-                                    className={`text-sm ${isThesaurusOpen ? "border-2 border-primary" : ""}`}
-                                    onClick={onToggleThesaurus}
-                                >
-                                    {"Thesaurus Search"}
+                                    <Link to="/wordbank">Your Word Bank</Link>
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
 
