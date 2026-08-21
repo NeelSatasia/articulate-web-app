@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import Dict, List
 from fastapi.concurrency import run_in_threadpool
 from userclient import get_user_client
-import random
 
 router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
 
@@ -38,52 +37,6 @@ async def user_word_categories(supabase=Depends(get_user_client)):
             "error": f"Failed to fetch word categories for user"
         }
     
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    
-
-@router.get("/dashboard")
-async def current_word_phrases(supabase=Depends(get_user_client)):
-    try:
-        target_limit = 5
-        
-        active_res = await run_in_threadpool(
-            lambda: supabase.table("word_bank")
-            .select("*")
-            .eq("display_status", 1)
-            .execute()
-        )
-        
-        active_rows = active_res.data or []
-
-        if not active_rows:
-            new_phrases_res = await run_in_threadpool(
-                lambda: supabase.table("word_bank")
-                .select("*")
-                .eq("curr_duration_days", 0)
-                .eq("next_duration_days", 0)
-                .order("word_id", desc=False)
-                .limit(target_limit)
-                .execute()
-            )
-            
-            if new_phrases_res.data:
-                selected_ids = [row["word_id"] for row in new_phrases_res.data]
-                
-                await run_in_threadpool(
-                    lambda: supabase.table("word_bank")
-                    .update({
-                        "display_status": 1,
-                        "curr_duration_days": 3,
-                        "next_duration_days": 3
-                    })
-                    .in_("word_id", selected_ids)
-                    .execute()
-                )
-                active_rows = new_phrases_res.data
-
-        return active_rows
-
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
