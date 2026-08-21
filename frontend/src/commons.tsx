@@ -36,22 +36,3 @@ export interface VocabularyWord {
     example: string
     word_level: number
 }
-
-export interface MistakeAndHint {
-    mistake: string
-    hint: string
-}
-
-export interface GrammarMistakeGroup {
-    mistake_type: "Grammar" | "Spelling" | "Punctuation"
-    mistakes: MistakeAndHint[]
-}
-
-export interface GrammarCheckResponse {
-    grammar_check: GrammarMistakeGroup[]
-}
-
-export interface PromptInfo {
-    prompt_id: number
-    prompt: string
-}
