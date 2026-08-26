@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 from typing import List
-import prompts
 
 class User(BaseModel):
     user_name: str
