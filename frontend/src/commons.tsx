@@ -36,3 +36,8 @@ export interface VocabularyWord {
     example: string
     word_level: number
 }
+
+export interface ChatMessage {
+    role: "system" | "user" | "assistant"
+    content: string
+}
