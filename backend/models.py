@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List
+import prompts
 
 class User(BaseModel):
     user_name: str
@@ -27,3 +28,7 @@ class WordBatchResponse(BaseModel):
 
 class VocabularyBatchRequest(BaseModel):
     words: List[str]
+
+class AIMessage(BaseModel):
+    role: str
+    content: str
