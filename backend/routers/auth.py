@@ -44,7 +44,11 @@ def callback(request: Request, code: str = None):
             "user_id": user_public_id.data[0]["user_id"],
             "access_token": session.session.access_token,
             "refresh_token": session.session.refresh_token,
-            "expires_at": session.session.expires_at
+            "expires_at": session.session.expires_at,
+            "target_word": None,
+            "situation": None,
+            "user_responses": [],
+            "ai_responses": []
         }
 
         return RedirectResponse(f"{FRONTEND_URL}/dashboard")
@@ -57,3 +61,28 @@ def callback(request: Request, code: str = None):
 def logout(request: Request):
     request.session.pop('user', None)
     return RedirectResponse(url=f"{FRONTEND_URL}")
+
+
+@router.get("/check")
+def check_auth(request: Request):
+    user = request.session.get('user')
+    
+    if user:
+        return {"authenticated": True, "user": user}
+    
+    raise HTTPException(status_code=401, detail="User not authenticated")
+
+
+@router.put("/target-word-reset")
+def reset_target_word(request: Request):
+    user = request.session.get('user')
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    
+    request.session['user']['target_word'] = None
+    request.session['user']['situation'] = None
+    request.session['user']['user_responses'] = []
+    request.session['user']['ai_responses'] = []
+    
+    return {"message": "Target word and related session data reset successfully."}
