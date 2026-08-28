@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import api from "../api"
-import {isAuth, loadingStr, setAuthInLocalStorage, trueStr, type WordPhrase, type ChatMessage} from "../commons"
+import {isAuth, loadingStr, setAuthInLocalStorage, trueStr, type ChatMessage} from "../commons"
 import Loading from "./Loading"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
@@ -12,36 +12,48 @@ const Dashboard = () => {
     const [loading, setLoading] = useState<boolean>(true)
 
     const messages = useRef<ChatMessage[]>([])
-    const [words, setWords] = useState<WordPhrase[]>([])
     const [userResponse, setUserResponse] = useState<string>("")
     const [isModelLoading, setIsModelLoading] = useState<boolean>(false)
+    const isPracticing = useRef<boolean>(false)
+    const [remainingAttempts, setRemainingAttempts] = useState<number>(3)
 
 
     const generateModelResponse = async () => {
         try {
             setIsModelLoading(true)
+            
+            try {
+                const resp = await api.post("/ai/generate", JSON.stringify(userResponse.trim()),
+                {
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                })
 
-            const last = messages.current[messages.current.length - 1]
-            let inputContent = ""
+                const content: ChatMessage[] = resp.data
 
-            if (last && last.role === "user") {
-                inputContent = last.content
-            } else {
-                if (words.length === 0) {
-                    inputContent = ""
-                } else {
-                    const idx = Math.floor(Math.random() * words.length)
-                    inputContent = (words[idx] as any).word_phrase || ""
-                    messages.current.push({ role: "user", content: `Target vocabulary word: ${inputContent}` })
+                if (content) {
+
+                    for (const msg of content) {
+                        messages.current.push(msg)
+
+                        if (msg.content.toLowerCase() === "correct") {
+                            isPracticing.current = false
+                        }
+                    }
+                    
+                    let attemptsTaken = 0
+
+                    for (let i = 2; i < messages.current.length; i++) {
+                        if (messages.current[i].role === "user") {
+                            attemptsTaken++
+                        }
+                    }
+
+                    setRemainingAttempts(3 - attemptsTaken)
                 }
-            }
-
-            const resp = await api.post("/ai/generate", messages.current)
-
-            const assistantContent = resp.data.output || ""
-
-            if (assistantContent) {
-                messages.current.push({ role: "assistant", content: assistantContent })
+            } catch (err: any) {
+                console.error("Error generating model response", err)
             }
         } catch (err) {
             console.error("Error calling model", err)
@@ -68,14 +80,18 @@ const Dashboard = () => {
 
     const practiceNextWord = async () => {
         messages.current = []
+        isPracticing.current = true
+        setUserResponse("")
+        setRemainingAttempts(3)
+
+        await api.put("/auth/target-word-reset")
         await generateModelResponse()
     }
 
     useEffect(() => {
         const getAuth = async () => {
             try {
-                const req = await api.get("/wordbank")
-                setWords(req.data)
+                await api.get("/auth/check")
                 localStorage.setItem(isAuth, trueStr)
             } catch (error: any) {
                 setAuthInLocalStorage(error)
@@ -97,15 +113,15 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="relative flex w-full flex-col gap-6 px-4 py-6 text-left sm:px-6">
+        <div className="flex flex-col w-full gap-6 px-4 items-center sm:px-6">
 
             <Button onClick={practiceNextWord} className="w-fit">Next Word</Button>
 
-            <div className="flex flex-col gap-3 mt-4 h-[70vh] w-full overflow-auto rounded-xl p-2">
+            <div className="flex flex-col gap-3 h-[70vh] w-full overflow-auto rounded-xl p-2">
                 {messages.current.map((m, i) => (
                     <div key={i} className="w-full">
                         <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                            <div className={`max-w-[70%] p-2 rounded-xl ${m.role === "user" ? "bg-sky-300 text-right" : "bg-orange-300 text-left"}`}>
+                            <div className={`max-w-[70%] p-2 rounded-xl ${m.role === "user" ? "bg-cyan-600 text-secondary" : m.content.toLowerCase() === "correct" ? "bg-green-500 text-white" : "bg-secondary text-neutral-700"}`}>
                                 <span>{m.content}</span>
                             </div>
                         </div>
@@ -114,6 +130,8 @@ const Dashboard = () => {
 
                 {isModelLoading && <Spinner />}
             </div>
+
+            <span className="text-sm text-neutral-500">Remaining Attempts: {remainingAttempts}</span>
 
             <Input
                 placeholder="Type your response and press Enter"
@@ -124,6 +142,7 @@ const Dashboard = () => {
                         await addNewUserResponse()
                     }
                 }}
+                disabled={isModelLoading || !isPracticing.current}
             />
         </div>
     )
