@@ -468,7 +468,7 @@ const WordBank = () => {
                 })
 
                 try {
-                    const resp = await api.post('/ai/word-phrases', jsonData)
+                    const resp = await api.post('/wordbank/word-phrases', jsonData)
 
                     resp.data.forEach((row: WordPhrase) => {
                         wordBank.current.get(row.word_category_id)!.set(row.word_id, row.word_phrase)

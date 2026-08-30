@@ -11,7 +11,7 @@ router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
 async def user_word_bank(supabase=Depends(get_user_client)):
     
     try:
-        result = await run_in_threadpool(lambda: supabase.table("word_bank").select("word_id, word_category_id, word_phrase").order("word_category_id").execute())
+        result = await run_in_threadpool(lambda: supabase.table("word_bank").select("word_id, word_category_id, word_phrase, success_attempts, failed_attempts, avg_success_attempts, last_attempted_at").order("word_category_id").execute())
 
         if result:
             return result.data
@@ -54,6 +54,33 @@ async def new_user_word_categories(new_word_categories: List[str], request: Requ
 
         return result.data
     
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/word-phrases")
+async def new_user_word_phrases(new_word_phrases: Dict[int, List[str]], request: Request, supabase=Depends(get_user_client)):
+    user = request.session.get('user')
+
+    try:
+        records = []
+        
+        for category_id, phrases in new_word_phrases.items():
+
+            for phrase in phrases:
+                records.append({
+                    "user_id": user["user_id"],
+                    "word_category_id": category_id,
+                    "word_phrase": phrase
+                })
+
+        if not records:
+            return []
+
+        result = await run_in_threadpool(lambda: supabase.table("word_bank").insert(records).execute())
+
+        return result.data
+
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
