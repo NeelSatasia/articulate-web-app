@@ -27,6 +27,10 @@ export interface WordPhrase {
     word_id: number
     word_category_id: number
     word_phrase: string
+    success_attempts: number
+    failed_attempts: number
+    avg_success_attempts: number
+    last_attempted_at: string
 }
 
 export interface VocabularyWord {
