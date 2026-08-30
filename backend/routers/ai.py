@@ -15,7 +15,7 @@ openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 router = APIRouter(prefix="/ai", tags=["AI"])
 
 
-@router.post("/generate")
+@router.post("/generate-word-context")
 async def generate_text(request: Request, user_response: str = Body(..., media_type="text/plain"), supabase=Depends(get_user_client)):
     user = request.session.get('user')
     
@@ -74,10 +74,20 @@ async def generate_text(request: Request, user_response: str = Body(..., media_t
 
         messages.insert(0, AIMessage(role="system", content=prompts.system_prompt(target_word)))
         
-        response = await openai_client.chat.completions.create(
-            model="gpt-4o-mini-2024-07-18",
-            messages=messages,
-        )
+        response = None
+
+        if request.session["user"]["situation"] is None:
+            response = await openai_client.chat.completions.create(
+                model="gpt-4o-mini-2024-07-18",
+                messages=messages,
+                temperature=2.0,
+                top_p=0.9,
+            )
+        else:
+            response = await openai_client.chat.completions.create(
+                model="gpt-4o-mini-2024-07-18",
+                messages=messages,
+            )
         
         generated_text = response.choices[0].message.content
         
@@ -101,7 +111,7 @@ async def generate_text(request: Request, user_response: str = Body(..., media_t
                     await run_in_threadpool(lambda: supabase.table("word_bank")
                                                 .update({
                                                     "success_attempts": original_word["success_attempts"] + 1,
-                                                    "avg_success_attempts": (original_word["avg_success_attempts"] + 1) / 2,
+                                                    "avg_success_attempts": (original_word["avg_success_attempts"] + len(request.session["user"]["user_responses"])) / 2,
                                                     "last_attempted_at": datetime.now(timezone.utc).isoformat()
                                                 })
                                                 .eq("word_phrase", target_word)
@@ -111,7 +121,7 @@ async def generate_text(request: Request, user_response: str = Body(..., media_t
                     await run_in_threadpool(lambda: supabase.table("word_bank")
                                                 .update({
                                                     "failed_attempts": original_word["failed_attempts"] + 1,
-                                                    "avg_success_attempts": (original_word["avg_success_attempts"] + 1) / 2,
+                                                    "avg_success_attempts": (original_word["avg_success_attempts"] + len(request.session["user"]["user_responses"])) / 2,
                                                     "last_attempted_at": datetime.now(timezone.utc).isoformat()
                                                 })
                                                 .eq("word_phrase", target_word)
