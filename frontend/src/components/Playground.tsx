@@ -23,7 +23,7 @@ const Dashboard = () => {
             setIsModelLoading(true)
             
             try {
-                const resp = await api.post("/ai/generate", JSON.stringify(userResponse.trim()),
+                const resp = await api.post("/ai/generate-word-context", JSON.stringify(userResponse.trim()),
                 {
                     headers: {
                         "Content-Type": "application/json"
@@ -48,6 +48,10 @@ const Dashboard = () => {
                         if (messages.current[i].role === "user") {
                             attemptsTaken++
                         }
+                    }
+
+                    if (attemptsTaken >= 3) {
+                        isPracticing.current = false
                     }
 
                     setRemainingAttempts(3 - attemptsTaken)
@@ -115,7 +119,7 @@ const Dashboard = () => {
     return (
         <div className="flex flex-col w-full gap-6 px-4 items-center sm:px-6">
 
-            <Button onClick={practiceNextWord} className="w-fit">Next Word</Button>
+            <Button onClick={practiceNextWord} className="w-fit">Continue</Button>
 
             <div className="flex flex-col gap-3 h-[70vh] w-full overflow-auto rounded-xl p-2">
                 {messages.current.map((m, i) => (
@@ -128,7 +132,7 @@ const Dashboard = () => {
                     </div>
                 ))}
 
-                {isModelLoading && <Spinner />}
+                {isModelLoading && <div className="w-full flex justify-center items-center"><Spinner/></div>}
             </div>
 
             <span className="text-sm text-neutral-500">Remaining Attempts: {remainingAttempts}</span>
