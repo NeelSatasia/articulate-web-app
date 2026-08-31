@@ -24,19 +24,20 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
 
     try:
 
-        if len(request.session["user"]["ai_responses"]) >= 3 or len(request.session["user"]["user_responses"]) >= 3:
+        trimmed_user_response = userPrompt.user_response.strip()
+
+        if len(request.session["user"]["ai_responses"]) >= 3 or len(request.session["user"]["user_responses"]) >= 3 or userPrompt.word_id != request.session["user"]["target_word_id"]:
+            request.session["user"]["target_word_id"] = None
             request.session["user"]["target_word"] = None
 
         target_word = request.session["user"]["target_word"]
         messages = []
-        
 
         if target_word:
+            if len(trimmed_user_response) == 0 or len(trimmed_user_response) > 1000:
+                raise HTTPException(status_code=400, detail="User response cannot be empty or greater than 1000 characters when continuing a practice session.")
 
-            if userPrompt.word_id != request.session["user"]["target_word_id"]:
-                raise HTTPException(status_code=400, detail="The given word ID does not match the current target word ID in the session.")
-
-            request.session["user"]["user_responses"].append(userPrompt.user_response)
+            request.session["user"]["user_responses"].append(trimmed_user_response)
 
             user_responses = request.session["user"]["user_responses"]
             ai_responses = request.session["user"]["ai_responses"]
@@ -46,7 +47,7 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
             if situation:
                 messages.append(AIMessage(role="assistant", content=situation))
             else:
-                raise HTTPException(status_code=400, detail="Situation not found")
+                raise HTTPException(status_code=400, detail="AI-generated situation not found")
 
             for i in range(len(user_responses)):
                 messages.append(AIMessage(role="user", content=user_responses[i]))
@@ -55,7 +56,7 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
                     messages.append(AIMessage(role="assistant", content=ai_responses[i]))
 
         else:
-            if len(userPrompt.user_response.strip()) > 0:
+            if len(trimmed_user_response) > 0:
                 raise HTTPException(status_code=400, detail="When starting a new practice session, the input must be empty.")
             
             result = await run_in_threadpool(lambda: supabase.table("word_bank")
@@ -119,7 +120,7 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
                                         .eq("word_id", request.session["user"]["target_word_id"])
                                         .execute()
                                     )
-        else:
+        elif len(request.session["user"]["user_responses"]) > 0:
             request.session["user"]["failed_attempts"] += 1
 
             await run_in_threadpool(lambda: supabase.table("word_bank")
@@ -132,13 +133,14 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
                                     )
 
         if len(request.session["user"]["ai_responses"]) >= 3 or len(request.session["user"]["user_responses"]) >= 3:
+            request.session["user"]["target_word_id"] = None
             request.session["user"]["target_word"] = None
 
 
-        if len(messages) == 2:
-            return [AIMessage(role="assistant", content=f"Your target word is: {target_word}"), messages[1]]
+        if len(messages) > 1:
+            return messages[-1].content
 
-        return [messages[-1]]
+        return None
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
