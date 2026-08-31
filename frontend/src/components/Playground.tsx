@@ -1,13 +1,14 @@
-import { Navigate } from "react-router-dom"
+import { Navigate, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import api from "../api"
-import {isAuth, loadingStr, setAuthInLocalStorage, trueStr, type ChatMessage} from "../commons"
+import {isAuth, loadingStr, setAuthInLocalStorage, trueStr, type ChatMessage, type WordPhrase} from "../commons"
 import Loading from "./Loading"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
 import { Spinner } from "./ui/spinner"
 
-const Dashboard = () => {
+
+const Playground = () => {
 
     const [loading, setLoading] = useState<boolean>(true)
 
@@ -16,14 +17,21 @@ const Dashboard = () => {
     const [isModelLoading, setIsModelLoading] = useState<boolean>(false)
     const isPracticing = useRef<boolean>(false)
     const [remainingAttempts, setRemainingAttempts] = useState<number>(3)
+    const [currentIndex, setCurrentIndex] = useState<number>(0)
 
+    const location = useLocation()
+    
+    const words: WordPhrase[] = location.state?.words
 
     const generateModelResponse = async () => {
         try {
             setIsModelLoading(true)
             
             try {
-                const resp = await api.post("/ai/generate-word-context", JSON.stringify(userResponse.trim()),
+                const resp = await api.post("/ai/generate-word-context", {
+                    user_response: userResponse.trim(),
+                    word_id: words[currentIndex].word_id
+                },
                 {
                     headers: {
                         "Content-Type": "application/json"
@@ -60,7 +68,7 @@ const Dashboard = () => {
                 console.error("Error generating model response", err)
             }
         } catch (err) {
-            console.error("Error calling model", err)
+            console.error("Error calling AI model", err)
         } finally {
             setIsModelLoading(false)
         }
@@ -77,19 +85,40 @@ const Dashboard = () => {
         }
 
         messages.current.push(newMsg)
-        setUserResponse("")
 
         await generateModelResponse()
     }
 
-    const practiceNextWord = async () => {
+    const practiceWord = async () => {
         messages.current = []
         isPracticing.current = true
         setUserResponse("")
         setRemainingAttempts(3)
 
-        await api.put("/auth/target-word-reset")
-        await generateModelResponse()
+        try {
+            await api.put("/auth/target-word-reset")
+        } catch (err) {
+            console.error("Error resetting target word info in the cookie session", err)
+        }
+
+        if (words && words.length > 0) {
+            await generateModelResponse()
+        } else {
+            console.error("No words list provided to start practice")
+        }
+    }
+
+    const nextWord = async () => {
+        isPracticing.current = false
+
+        const next = currentIndex + 1
+        if (!words || next >= words.length) {
+            return
+        }
+        
+        setCurrentIndex(next)
+        setUserResponse("")
+        setRemainingAttempts(3)
     }
 
     useEffect(() => {
@@ -118,8 +147,17 @@ const Dashboard = () => {
 
     return (
         <div className="flex flex-col w-full gap-6 px-4 items-center sm:px-6">
+            
+            <div className="flex gap-x-4">
+                <Button onClick={practiceWord} className="w-fit" disabled={!isPracticing}>Practice Word</Button>
+                <Button onClick={nextWord} className="w-fit">Next Word</Button>
+            </div>
 
-            <Button onClick={practiceNextWord} className="w-fit">Continue</Button>
+            {!isPracticing.current && words.length > 0 && (
+                <div className="flex gap-2">
+                    <span className="text-sm text-neutral-500">Word: {words[currentIndex].word_phrase}</span>
+                </div>
+            )}
 
             <div className="flex flex-col gap-3 h-[70vh] w-full overflow-auto rounded-xl p-2">
                 {messages.current.map((m, i) => (
@@ -152,4 +190,4 @@ const Dashboard = () => {
     )
 }
 
-export default Dashboard
+export default Playground
