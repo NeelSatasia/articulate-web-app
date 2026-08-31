@@ -38,21 +38,22 @@ const Playground = () => {
                     },
                 })
 
-                const content: ChatMessage[] = resp.data
+                const content: string = resp.data
 
                 if (content) {
 
-                    for (const msg of content) {
-                        messages.current.push(msg)
+                    messages.current.push({
+                        role: "assistant",
+                        content: content
+                    })
 
-                        if (msg.content.toLowerCase() === "correct") {
-                            isPracticing.current = false
-                        }
+                    if (content.toLowerCase() === "correct") {
+                        isPracticing.current = false
                     }
                     
                     let attemptsTaken = 0
 
-                    for (let i = 2; i < messages.current.length; i++) {
+                    for (let i = 0; i < messages.current.length; i++) {
                         if (messages.current[i].role === "user") {
                             attemptsTaken++
                         }
@@ -89,11 +90,15 @@ const Playground = () => {
         await generateModelResponse()
     }
 
-    const practiceWord = async () => {
+    const resetUserResponsesAttempts = async () => {
         messages.current = []
-        isPracticing.current = true
         setUserResponse("")
         setRemainingAttempts(3)
+    }
+
+    const practiceWord = async () => {
+        isPracticing.current = true
+        resetUserResponsesAttempts()
 
         try {
             await api.put("/auth/target-word-reset")
@@ -115,10 +120,21 @@ const Playground = () => {
         if (!words || next >= words.length) {
             return
         }
-        
+
         setCurrentIndex(next)
-        setUserResponse("")
-        setRemainingAttempts(3)
+        resetUserResponsesAttempts()
+    }
+
+    const previousWord = async () => {
+        isPracticing.current = false
+
+        const prev = currentIndex - 1
+        if (!words || prev < 0) {
+            return
+        }
+
+        setCurrentIndex(prev)
+        resetUserResponsesAttempts()
     }
 
     useEffect(() => {
@@ -146,46 +162,56 @@ const Playground = () => {
     }
 
     return (
-        <div className="flex flex-col w-full gap-6 px-4 items-center sm:px-6">
-            
-            <div className="flex gap-x-4">
-                <Button onClick={practiceWord} className="w-fit" disabled={!isPracticing}>Practice Word</Button>
-                <Button onClick={nextWord} className="w-fit">Next Word</Button>
-            </div>
+        <div className="h-screen h-full min-h-0 w-full overflow-hidden p-3">
+            <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-4 overflow-hidden rounded-3xl border border-border p-4">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border bg-background px-5 py-4">
+                    <div>
+                        {words.length > 0 && (
+                            <p className="text-xl font-semibold text-foreground">{words[currentIndex].word_phrase}</p>
+                        )}
+                    </div>
 
-            {!isPracticing.current && words.length > 0 && (
-                <div className="flex gap-2">
-                    <span className="text-sm text-neutral-500">Word: {words[currentIndex].word_phrase}</span>
+                    <span className="rounded-full border border-border bg-secondary px-3 py-1 text-xs font-semibold text-foreground">
+                        Attempts left: {remainingAttempts}
+                    </span>
                 </div>
-            )}
 
-            <div className="flex flex-col gap-3 h-[70vh] w-full overflow-auto rounded-xl p-2">
-                {messages.current.map((m, i) => (
-                    <div key={i} className="w-full">
-                        <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                            <div className={`max-w-[70%] p-2 rounded-xl ${m.role === "user" ? "bg-cyan-600 text-secondary" : m.content.toLowerCase() === "correct" ? "bg-green-500 text-white" : "bg-secondary text-neutral-700"}`}>
-                                <span>{m.content}</span>
+                <div className="flex shrink-0 flex-wrap gap-3">
+                    <Button onClick={previousWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={currentIndex === 0}>Back</Button>
+                    <Button onClick={practiceWord} className="w-fit rounded-full bg-primary px-5 text-primary-foreground shadow-none transition hover:opacity-90" disabled={!isPracticing}>Practice</Button>
+                    <Button onClick={nextWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={currentIndex >= words.length - 1}>Next</Button>
+                </div>
+
+
+                <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-2xl bg-muted/40 p-4 sm:p-5">
+                    {messages.current.map((m, i) => (
+                        <div key={i} className="w-full">
+                            <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                                <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ring-1 ${m.role === "user" ? "bg-primary text-primary-foreground ring-border" : m.content.toLowerCase() === "correct" ? "bg-foreground text-background ring-border" : "bg-card text-foreground ring-border"}`}>
+                                    <span>{m.content}</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))}
 
-                {isModelLoading && <div className="w-full flex justify-center items-center"><Spinner/></div>}
+                    {isModelLoading && <div className="w-full flex justify-center items-center py-4"><Spinner/></div>}
+                </div>
+
+                <div className="shrink-0 rounded-2xl border border-border bg-background p-4 shadow-sm sm:flex sm:items-center">
+                    <Input
+                        placeholder="Type your response and press Enter"
+                        value={userResponse}
+                        onChange={(e: any) => setUserResponse(e.target.value)}
+                        onKeyDown={async (e: any) => {
+                            if (e.key === "Enter" && userResponse.trim() !== "") {
+                                await addNewUserResponse()
+                            }
+                        }}
+                        disabled={isModelLoading || !isPracticing.current}
+                        className="h-12 rounded-full border-border bg-background px-5 text-base shadow-inner shadow-black/5 transition placeholder:text-muted-foreground focus-visible:ring-ring/40"
+                    />
+                </div>
             </div>
-
-            <span className="text-sm text-neutral-500">Remaining Attempts: {remainingAttempts}</span>
-
-            <Input
-                placeholder="Type your response and press Enter"
-                value={userResponse}
-                onChange={(e: any) => setUserResponse(e.target.value)}
-                onKeyDown={async (e: any) => {
-                    if (e.key === "Enter" && userResponse.trim() !== "") {
-                        await addNewUserResponse()
-                    }
-                }}
-                disabled={isModelLoading || !isPracticing.current}
-            />
         </div>
     )
 }
