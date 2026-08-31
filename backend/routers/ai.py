@@ -4,7 +4,7 @@ from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
 from userclient import get_user_client
-from models import AIMessage
+from models import AIMessage, AIRequest
 import prompts
 from datetime import datetime, timezone
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 
 
 @router.post("/generate-word-context")
-async def generate_text(request: Request, user_response: str = Body(..., media_type="text/plain"), supabase=Depends(get_user_client)):
+async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depends(get_user_client)):
     user = request.session.get('user')
     
     if not user:
@@ -24,12 +24,19 @@ async def generate_text(request: Request, user_response: str = Body(..., media_t
 
     try:
 
+        if len(request.session["user"]["ai_responses"]) >= 3 or len(request.session["user"]["user_responses"]) >= 3:
+            request.session["user"]["target_word"] = None
+
         target_word = request.session["user"]["target_word"]
         messages = []
+        
 
         if target_word:
 
-            request.session["user"]["user_responses"].append(user_response)
+            if userPrompt.word_id != request.session["user"]["target_word_id"]:
+                raise HTTPException(status_code=400, detail="The given word ID does not match the current target word ID in the session.")
+
+            request.session["user"]["user_responses"].append(userPrompt.user_response)
 
             user_responses = request.session["user"]["user_responses"]
             ai_responses = request.session["user"]["ai_responses"]
@@ -48,15 +55,12 @@ async def generate_text(request: Request, user_response: str = Body(..., media_t
                     messages.append(AIMessage(role="assistant", content=ai_responses[i]))
 
         else:
-            if len(user_response.strip()) > 0:
+            if len(userPrompt.user_response.strip()) > 0:
                 raise HTTPException(status_code=400, detail="When starting a new practice session, the input must be empty.")
             
             result = await run_in_threadpool(lambda: supabase.table("word_bank")
-                                                            .select("word_id, word_phrase, success_attempts, failed_attempts, avg_success_attempts, last_attempted_at")
-                                                            .order("success_attempts", desc=False)
-                                                            .order("failed_attempts", desc=True)
-                                                            .order("avg_success_attempts", desc=True)
-                                                            .order("last_attempted_at", desc=False)
+                                                            .select("word_phrase, success_attempts, failed_attempts, avg_success_attempts, last_attempted_at")
+                                                            .eq("word_id", userPrompt.word_id)
                                                             .limit(1)
                                                             .execute()
                                                         )
@@ -66,9 +70,13 @@ async def generate_text(request: Request, user_response: str = Body(..., media_t
                 target_word = result.data[0]["word_phrase"]
 
                 request.session["user"]["target_word"] = target_word
+                request.session["user"]["target_word_id"] = userPrompt.word_id
                 request.session["user"]["situation"] = None
                 request.session["user"]["user_responses"] = []
                 request.session["user"]["ai_responses"] = []
+                request.session["user"]["success_attempts"] = result.data[0]["success_attempts"]
+                request.session["user"]["failed_attempts"] = result.data[0]["failed_attempts"]
+                request.session["user"]["avg_success_attempts"] = result.data[0]["avg_success_attempts"]
             else:
                 raise HTTPException(status_code=404, detail="No words found in the user's word bank")
 
@@ -78,14 +86,14 @@ async def generate_text(request: Request, user_response: str = Body(..., media_t
 
         if request.session["user"]["situation"] is None:
             response = await openai_client.chat.completions.create(
-                model="gpt-4o-mini-2024-07-18",
+                model=os.getenv("OPENAI_MODEL"),
                 messages=messages,
                 temperature=2.0,
                 top_p=0.9,
             )
         else:
             response = await openai_client.chat.completions.create(
-                model="gpt-4o-mini-2024-07-18",
+                model=os.getenv("OPENAI_MODEL"),
                 messages=messages,
             )
         
@@ -98,42 +106,33 @@ async def generate_text(request: Request, user_response: str = Body(..., media_t
 
         messages.append(AIMessage(role="assistant", content=generated_text))
 
-        if len(request.session["user"]["ai_responses"]) == 3 or generated_text.strip().lower() == "correct":
-            original_word_data = await run_in_threadpool(lambda: supabase.table("word_bank")
-                                                        .select("success_attempts, failed_attempts, avg_success_attempts")
-                                                        .eq("word_phrase", target_word)
-                                                        .execute()
-                                                    )
-            if original_word_data.data:
-                original_word = original_word_data.data[0]
+        if generated_text and generated_text.strip().lower() == "correct":
+            request.session["user"]["success_attempts"] += 1
+            request.session["user"]["avg_success_attempts"] = (request.session["user"]["avg_success_attempts"] + len(request.session["user"]["user_responses"])) / 2
 
-                if generated_text.strip().lower() == "correct":
-                    await run_in_threadpool(lambda: supabase.table("word_bank")
-                                                .update({
-                                                    "success_attempts": original_word["success_attempts"] + 1,
-                                                    "avg_success_attempts": (original_word["avg_success_attempts"] + len(request.session["user"]["user_responses"])) / 2,
-                                                    "last_attempted_at": datetime.now(timezone.utc).isoformat()
-                                                })
-                                                .eq("word_phrase", target_word)
-                                                .execute()
-                                            )
-                else:
-                    await run_in_threadpool(lambda: supabase.table("word_bank")
-                                                .update({
-                                                    "failed_attempts": original_word["failed_attempts"] + 1,
-                                                    "avg_success_attempts": (original_word["avg_success_attempts"] + len(request.session["user"]["user_responses"])) / 2,
-                                                    "last_attempted_at": datetime.now(timezone.utc).isoformat()
-                                                })
-                                                .eq("word_phrase", target_word)
-                                                .execute()
-                                            )
-            else:
-                raise HTTPException(status_code=404, detail=f"Word '{target_word}' not found in the user's word bank")
+            await run_in_threadpool(lambda: supabase.table("word_bank")
+                                        .update({
+                                            "success_attempts": request.session["user"]["success_attempts"],
+                                            "avg_success_attempts": request.session["user"]["avg_success_attempts"],
+                                            "last_attempted_at": datetime.now(timezone.utc).isoformat()
+                                        })
+                                        .eq("word_id", request.session["user"]["target_word_id"])
+                                        .execute()
+                                    )
+        else:
+            request.session["user"]["failed_attempts"] += 1
 
+            await run_in_threadpool(lambda: supabase.table("word_bank")
+                                        .update({
+                                            "failed_attempts": request.session["user"]["failed_attempts"],
+                                            "last_attempted_at": datetime.now(timezone.utc).isoformat()
+                                        })
+                                        .eq("word_id", request.session["user"]["target_word_id"])
+                                        .execute()
+                                    )
+
+        if len(request.session["user"]["ai_responses"]) >= 3 or len(request.session["user"]["user_responses"]) >= 3:
             request.session["user"]["target_word"] = None
-            request.session["user"]["situation"] = None
-            request.session["user"]["user_responses"] = []
-            request.session["user"]["ai_responses"] = []
 
 
         if len(messages) == 2:
