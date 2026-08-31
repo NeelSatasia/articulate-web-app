@@ -30,7 +30,7 @@ export interface WordPhrase {
     success_attempts: number
     failed_attempts: number
     avg_success_attempts: number
-    last_attempted_at: string
+    last_attempted_at: string | null
 }
 
 export interface VocabularyWord {
