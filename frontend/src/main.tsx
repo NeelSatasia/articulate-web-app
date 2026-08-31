@@ -6,6 +6,7 @@ import WordBank from './components/WordBank.tsx'
 import Dashboard from './components/Dashboard.tsx'
 import Layout from './components/Layout.tsx'
 import Settings from './components/Settings.tsx'
+import Playground from './components/Playground.tsx'
 
 const router = createBrowserRouter([
     {path: "/", element: <App />},
@@ -14,7 +15,8 @@ const router = createBrowserRouter([
         children: [
             { index: true, path: "dashboard", element: <Dashboard /> },
             { path: "wordbank", element: <WordBank /> },
-            { path: "settings", element: <Settings /> }
+            { path: "settings", element: <Settings /> },
+            { path: "playground", element: <Playground /> }
         ]
     }
 ])
