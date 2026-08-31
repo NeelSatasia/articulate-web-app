@@ -31,3 +31,7 @@ class VocabularyBatchRequest(BaseModel):
 class AIMessage(BaseModel):
     role: str
     content: str
+
+class AIRequest(BaseModel):
+    word_id: int
+    user_response: str
