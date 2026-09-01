@@ -8,6 +8,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Link } from "react-router-dom"
 import { Button } from "./ui/button"
@@ -29,6 +30,8 @@ const AppSidebar = () => {
 
     return (
         <Sidebar>
+            <SidebarTrigger className="absolute right-[-30px] top-0 z-50" />
+            
             <SidebarHeader className="flex flex-col items-center justify-center gap-y-2">
                 <h1 className="text-4xl">{localStorage.getItem(userName)}</h1>
             </SidebarHeader>
