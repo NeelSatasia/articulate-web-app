@@ -43,5 +43,15 @@ export interface VocabularyWord {
 
 export interface ChatMessage {
     role: "system" | "user" | "assistant"
-    content: string
+    content: string | Situation | Evaluation
+}
+
+export interface Situation {
+    situation: string
+}
+
+export interface Evaluation {
+    correct: boolean
+    feedback?: string
+    example?: string
 }
