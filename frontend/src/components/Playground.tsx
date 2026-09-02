@@ -1,27 +1,69 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import api from "../api"
-import {isAuth, loadingStr, setAuthInLocalStorage, trueStr, type ChatMessage, type WordPhrase} from "../commons"
+import {isAuth, loadingStr, setAuthInLocalStorage, trueStr, type ChatMessage, type Evaluation, type Situation, type WordPhrase} from "../commons"
 import Loading from "./Loading"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
 import { Spinner } from "./ui/spinner"
+
+type SpeechRecognitionResultLike = {
+    isFinal: boolean
+    0: {
+        transcript: string
+    }
+}
+
+type SpeechRecognitionEventLike = {
+    results: ArrayLike<SpeechRecognitionResultLike>
+}
+
+type SpeechRecognitionLike = {
+    lang: string
+    continuous: boolean
+    interimResults: boolean
+    onresult: ((event: SpeechRecognitionEventLike) => void) | null
+    onerror: (() => void) | null
+    onend: (() => void) | null
+    start: () => void
+    stop: () => void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
 
 
 const Playground = () => {
 
     const [loading, setLoading] = useState<boolean>(true)
 
-    const messages = useRef<ChatMessage[]>([])
     const [userResponse, setUserResponse] = useState<string>("")
     const [isModelLoading, setIsModelLoading] = useState<boolean>(false)
-    const isPracticing = useRef<boolean>(false)
-    const [remainingAttempts, setRemainingAttempts] = useState<number>(3)
+    const [speechSupported, setSpeechSupported] = useState<boolean>(true)
+    const [isListening, setIsListening] = useState<boolean>(false)
     const [currentIndex, setCurrentIndex] = useState<number>(0)
+    const messages = useRef<ChatMessage[]>([])
+    const remainingAttempts = useRef<number>(3)
+    const isPracticing = useRef<boolean>(false)
+    const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+    const baseResponseRef = useRef<string>("")
 
     const location = useLocation()
     
     const words: WordPhrase[] = location.state?.words
+
+    const capitalizeFirstLetterOfFirstWord = (value: string) => {
+        return value.replace(/^(\s*)(\S)/, (_, leadingSpace: string, firstChar: string) => {
+            return `${leadingSpace}${firstChar.toUpperCase()}`
+        })
+    }
+
+    const isSituation = (value: unknown): value is Situation => {
+        return typeof value === "object" && value !== null && "situation" in value && typeof (value as Situation).situation === "string"
+    }
+
+    const isEvaluation = (value: unknown): value is Evaluation => {
+        return typeof value === "object" && value !== null && "correct" in value && typeof (value as Evaluation).correct === "boolean"
+    }
 
     const generateModelResponse = async () => {
         try {
@@ -38,33 +80,24 @@ const Playground = () => {
                     },
                 })
 
-                const content: string = resp.data
+                const content = resp.data as Situation | Evaluation
 
                 if (content) {
-
                     messages.current.push({
                         role: "assistant",
-                        content: content
+                        content
                     })
 
-                    if (content.toLowerCase() === "correct") {
-                        isPracticing.current = false
-                    }
-                    
-                    let attemptsTaken = 0
+                    if (isEvaluation(content)) {
+                        remainingAttempts.current -= 1
 
-                    for (let i = 0; i < messages.current.length; i++) {
-                        if (messages.current[i].role === "user") {
-                            attemptsTaken++
+                        if (content.correct || remainingAttempts.current <= 0) {
+                            isPracticing.current = false
                         }
                     }
-
-                    if (attemptsTaken >= 3) {
-                        isPracticing.current = false
-                    }
-
-                    setRemainingAttempts(3 - attemptsTaken)
                 }
+
+                setUserResponse("")
             } catch (err: any) {
                 console.error("Error generating model response", err)
             }
@@ -76,13 +109,15 @@ const Playground = () => {
     }
 
     const addNewUserResponse = async () => {
-        if (userResponse.trim() === "") {
+        const normalizedUserResponse = capitalizeFirstLetterOfFirstWord(userResponse)
+
+        if (normalizedUserResponse.trim() === "") {
             return
         }
 
         const newMsg: ChatMessage = {
             role: "user",
-            content: userResponse.trim()
+            content: normalizedUserResponse.trim()
         }
 
         messages.current.push(newMsg)
@@ -90,10 +125,45 @@ const Playground = () => {
         await generateModelResponse()
     }
 
-    const resetUserResponsesAttempts = async () => {
+    const renderAssistantMessage = (messageContent: Situation | Evaluation) => {
+        if (isSituation(messageContent)) {
+            return (
+                <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground">Situation</p>
+                    <p>{messageContent.situation}</p>
+                </div>
+            )
+        }
+
+        if (isEvaluation(messageContent)) {
+            if (messageContent.correct) {
+                return (
+                    <div className="space-y-1">
+                        <p className="text-xs font-semibold text-green-600">Correct</p>
+                    </div>
+                )
+            }
+
+            return (
+                <div className="space-y-2">
+                    <p className="text-xs font-semibold text-red-600">Incorrect</p>
+                    {messageContent.feedback && (
+                        <p><span className="font-semibold">Feedback:</span> {messageContent.feedback}</p>
+                    )}
+                    {messageContent.example && (
+                        <p><span className="font-semibold">Example:</span> {messageContent.example}</p>
+                    )}
+                </div>
+            )
+        }
+
+        return null
+    }
+
+    const resetUserResponsesAttempts = () => {
         messages.current = []
+        remainingAttempts.current = 3
         setUserResponse("")
-        setRemainingAttempts(3)
     }
 
     const practiceWord = async () => {
@@ -113,7 +183,7 @@ const Playground = () => {
         }
     }
 
-    const nextWord = async () => {
+    const nextWord = () => {
         isPracticing.current = false
 
         const next = currentIndex + 1
@@ -125,7 +195,7 @@ const Playground = () => {
         resetUserResponsesAttempts()
     }
 
-    const previousWord = async () => {
+    const previousWord = () => {
         isPracticing.current = false
 
         const prev = currentIndex - 1
@@ -135,6 +205,23 @@ const Playground = () => {
 
         setCurrentIndex(prev)
         resetUserResponsesAttempts()
+    }
+
+    const toggleSpeechToText = () => {
+        const recognition = recognitionRef.current
+
+        if (!recognition) {
+            return
+        }
+
+        if (isListening) {
+            recognition.stop()
+            return
+        }
+
+        baseResponseRef.current = userResponse.trim()
+        recognition.start()
+        setIsListening(true)
     }
 
     useEffect(() => {
@@ -151,6 +238,58 @@ const Playground = () => {
         }
 
         getAuth()
+    }, [])
+
+    useEffect(() => {
+        const speechWindow = window as Window & {
+            SpeechRecognition?: SpeechRecognitionConstructor
+            webkitSpeechRecognition?: SpeechRecognitionConstructor
+        }
+
+        const RecognitionClass = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
+
+        if (!RecognitionClass) {
+            setSpeechSupported(false)
+            return
+        }
+
+        const recognition = new RecognitionClass()
+        recognition.lang = "en-US"
+        recognition.continuous = true
+        recognition.interimResults = true
+
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map((result) => result[0].transcript)
+                .join(" ")
+                .trim()
+
+            if (!transcript) {
+                return
+            }
+
+            const nextResponse = [baseResponseRef.current, transcript]
+                .filter(Boolean)
+                .join(" ")
+                .trim()
+
+            setUserResponse(capitalizeFirstLetterOfFirstWord(nextResponse))
+        }
+
+        recognition.onerror = () => {
+            setIsListening(false)
+        }
+
+        recognition.onend = () => {
+            setIsListening(false)
+        }
+
+        recognitionRef.current = recognition
+
+        return () => {
+            recognition.stop()
+            recognitionRef.current = null
+        }
     }, [])
 
     if (loading) {
@@ -172,7 +311,7 @@ const Playground = () => {
                     </div>
 
                     <span className="rounded-full border border-border bg-secondary px-3 py-1 text-xs font-semibold text-foreground">
-                        Attempts left: {remainingAttempts}
+                        Attempts left: {remainingAttempts.current}
                     </span>
                 </div>
 
@@ -187,8 +326,8 @@ const Playground = () => {
                     {messages.current.map((m, i) => (
                         <div key={i} className="w-full">
                             <div className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                                <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ring-1 ${m.role === "user" ? "bg-primary text-primary-foreground ring-border" : m.content.toLowerCase() === "correct" ? "bg-foreground text-background ring-border" : "bg-card text-foreground ring-border"}`}>
-                                    <span>{m.content}</span>
+                                <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ring-1 ${m.role === "user" ? "bg-primary text-primary-foreground ring-border" : "bg-card text-foreground ring-border"}`}>
+                                    {typeof m.content === "string" ? <span>{m.content}</span> : renderAssistantMessage(m.content)}
                                 </div>
                             </div>
                         </div>
@@ -197,19 +336,29 @@ const Playground = () => {
                     {isModelLoading && <div className="w-full flex justify-center items-center py-4"><Spinner/></div>}
                 </div>
 
-                <div className="shrink-0 rounded-2xl border border-border bg-background p-4 shadow-sm sm:flex sm:items-center">
+                <div className="shrink-0 rounded-2xl bg-background p-4 sm:flex sm:items-center sm:gap-3">
                     <Input
                         placeholder="Type your response and press Enter"
                         value={userResponse}
-                        onChange={(e: any) => setUserResponse(e.target.value)}
+                        onChange={(e: any) => setUserResponse(capitalizeFirstLetterOfFirstWord(e.target.value))}
                         onKeyDown={async (e: any) => {
                             if (e.key === "Enter" && userResponse.trim() !== "") {
                                 await addNewUserResponse()
                             }
                         }}
                         disabled={isModelLoading || !isPracticing.current}
-                        className="h-12 rounded-full border-border bg-background px-5 text-base shadow-inner shadow-black/5 transition placeholder:text-muted-foreground focus-visible:ring-ring/40"
+                        className="h-12 rounded-full border-border bg-background px-5 text-base shadow-inner shadow-black/5 transition placeholder:text-muted-foreground focus-visible:ring-ring/40 sm:flex-1"
                     />
+
+                    <Button
+                        type="button"
+                        variant={isListening ? "secondary" : "outline"}
+                        onClick={toggleSpeechToText}
+                        disabled={!speechSupported || isModelLoading || !isPracticing.current}
+                        className="mt-3 w-full rounded-full sm:mt-0 sm:w-fit"
+                    >
+                        {isListening ? "Stop Mic" : "Start Mic"}
+                    </Button>
                 </div>
             </div>
         </div>
