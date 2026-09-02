@@ -1,10 +1,10 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, Body
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.concurrency import run_in_threadpool
 from openai import AsyncOpenAI
 import os
 from dotenv import load_dotenv
 from userclient import get_user_client
-from models import AIMessage, AIRequest
+from models import AIMessage, UserRequest, Evaluation, Situation
 import prompts
 from datetime import datetime, timezone
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 
 
 @router.post("/generate-word-context")
-async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depends(get_user_client)):
+async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depends(get_user_client)):
     user = request.session.get('user')
     
     if not user:
@@ -26,7 +26,7 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
 
         trimmed_user_response = userPrompt.user_response.strip()
 
-        if len(request.session["user"]["ai_responses"]) >= 3 or len(request.session["user"]["user_responses"]) >= 3 or userPrompt.word_id != request.session["user"]["target_word_id"]:
+        if request.session["user"]["ai_responses"] >= 3 or request.session["user"]["user_responses"] >= 3 or userPrompt.word_id != request.session["user"]["target_word_id"]:
             request.session["user"]["target_word_id"] = None
             request.session["user"]["target_word"] = None
 
@@ -37,23 +37,7 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
             if len(trimmed_user_response) == 0 or len(trimmed_user_response) > 1000:
                 raise HTTPException(status_code=400, detail="User response cannot be empty or greater than 1000 characters when continuing a practice session.")
 
-            request.session["user"]["user_responses"].append(trimmed_user_response)
-
-            user_responses = request.session["user"]["user_responses"]
-            ai_responses = request.session["user"]["ai_responses"]
-
-            situation = request.session["user"]["situation"]
-
-            if situation:
-                messages.append(AIMessage(role="assistant", content=situation))
-            else:
-                raise HTTPException(status_code=400, detail="AI-generated situation not found")
-
-            for i in range(len(user_responses)):
-                messages.append(AIMessage(role="user", content=user_responses[i]))
-
-                if i < len(ai_responses):
-                    messages.append(AIMessage(role="assistant", content=ai_responses[i]))
+            request.session["user"]["user_responses"] += 1
 
         else:
             if len(trimmed_user_response) > 0:
@@ -73,43 +57,50 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
                 request.session["user"]["target_word"] = target_word
                 request.session["user"]["target_word_id"] = userPrompt.word_id
                 request.session["user"]["situation"] = None
-                request.session["user"]["user_responses"] = []
-                request.session["user"]["ai_responses"] = []
+                request.session["user"]["user_responses"] = 0
+                request.session["user"]["ai_responses"] = 0
                 request.session["user"]["success_attempts"] = result.data[0]["success_attempts"]
                 request.session["user"]["failed_attempts"] = result.data[0]["failed_attempts"]
                 request.session["user"]["avg_success_attempts"] = result.data[0]["avg_success_attempts"]
             else:
                 raise HTTPException(status_code=404, detail="No words found in the user's word bank")
 
-        messages.insert(0, AIMessage(role="system", content=prompts.system_prompt(target_word)))
-        
         response = None
 
         if request.session["user"]["situation"] is None:
-            response = await openai_client.chat.completions.create(
+            messages.append(AIMessage(role="system", content=prompts.situation_system_prompt(target_word)))
+
+            response = await openai_client.responses.parse(
                 model=os.getenv("OPENAI_MODEL"),
-                messages=messages,
+                input=messages,
+                text_format=Situation,
                 temperature=2.0,
                 top_p=0.9,
             )
+
+            request.session["user"]["situation"] = response.output_parsed.situation
+
+            return response.output_parsed
+
         else:
-            response = await openai_client.chat.completions.create(
+            is_reveal = request.session["user"]["user_responses"] >= 3
+            messages.append(AIMessage(role="system", content=prompts.evaluation_prompt(target_word, request.session["user"]["situation"], is_reveal)))
+            messages.append(AIMessage(role="user", content=trimmed_user_response))
+
+            response = await openai_client.responses.parse(
                 model=os.getenv("OPENAI_MODEL"),
-                messages=messages,
+                input=messages,
+                text_format=Evaluation,
             )
-        
-        generated_text = response.choices[0].message.content
-        
-        if request.session["user"]["situation"] is None:
-            request.session["user"]["situation"] = generated_text
-        else:
-            request.session["user"]["ai_responses"].append(generated_text)
 
-        messages.append(AIMessage(role="assistant", content=generated_text))
+        
+        response = response.output_parsed
 
-        if generated_text and generated_text.strip().lower() == "correct":
+        request.session["user"]["ai_responses"] += 1
+
+        if response.correct:
             request.session["user"]["success_attempts"] += 1
-            request.session["user"]["avg_success_attempts"] = (request.session["user"]["avg_success_attempts"] + len(request.session["user"]["user_responses"])) / 2
+            request.session["user"]["avg_success_attempts"] = (request.session["user"]["avg_success_attempts"] + request.session["user"]["user_responses"]) / 2
 
             await run_in_threadpool(lambda: supabase.table("word_bank")
                                         .update({
@@ -120,7 +111,7 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
                                         .eq("word_id", request.session["user"]["target_word_id"])
                                         .execute()
                                     )
-        elif len(request.session["user"]["user_responses"]) > 0:
+        else:
             request.session["user"]["failed_attempts"] += 1
 
             await run_in_threadpool(lambda: supabase.table("word_bank")
@@ -132,15 +123,12 @@ async def generate_text(request: Request, userPrompt: AIRequest, supabase=Depend
                                         .execute()
                                     )
 
-        if len(request.session["user"]["ai_responses"]) >= 3 or len(request.session["user"]["user_responses"]) >= 3:
+        if request.session["user"]["ai_responses"] >= 3 or request.session["user"]["user_responses"] >= 3:
             request.session["user"]["target_word_id"] = None
             request.session["user"]["target_word"] = None
 
 
-        if len(messages) > 1:
-            return messages[-1].content
-
-        return None
+        return response
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
