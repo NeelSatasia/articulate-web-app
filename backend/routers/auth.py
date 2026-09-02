@@ -48,8 +48,8 @@ def callback(request: Request, code: str = None):
             "target_word": None,
             "target_word_id": None,
             "situation": None,
-            "user_responses": [],
-            "ai_responses": [],
+            "user_responses": 0,
+            "ai_responses": 0,
             "success_attempts": None,
             "failed_attempts": None,
             "avg_success_attempts": None
@@ -87,8 +87,8 @@ def reset_target_word(request: Request):
     request.session['user']['target_word'] = None
     request.session['user']['target_word_id'] = None
     request.session['user']['situation'] = None
-    request.session['user']['user_responses'] = []
-    request.session['user']['ai_responses'] = []
+    request.session['user']['user_responses'] = 0
+    request.session['user']['ai_responses'] = 0
     request.session["user"]["success_attempts"] = None
     request.session["user"]["failed_attempts"] = None
     request.session["user"]["avg_success_attempts"] = None
