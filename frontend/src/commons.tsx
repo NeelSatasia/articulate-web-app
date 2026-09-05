@@ -48,10 +48,12 @@ export interface ChatMessage {
 
 export interface Situation {
     situation: string
+    follow_up_question: string
 }
 
 export interface Evaluation {
     correct: boolean
     feedback?: string
     example?: string
+    explanation?: string
 }
