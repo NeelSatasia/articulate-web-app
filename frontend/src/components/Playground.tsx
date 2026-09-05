@@ -70,30 +70,45 @@ const Playground = () => {
             setIsModelLoading(true)
             
             try {
-                const resp = await api.post("/ai/generate-word-context", {
-                    user_response: userResponse.trim(),
-                    word_id: words[currentIndex].word_id
-                },
-                {
-                    headers: {
-                        "Content-Type": "application/json"
+
+                if (messages.current.length == 0) {
+                    const resp = await api.post("/ai/generate-situation", {
+                        word_id: words[currentIndex].word_id}, 
+                        {
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                    })
+
+                    const content: Situation = resp.data
+
+                    messages.current.push({
+                        role: "assistant",
+                        content
+                    })
+                } 
+                
+                else {
+                    const resp = await api.post("/ai/validate-user-response", {
+                        user_response: userResponse.trim()
                     },
-                })
+                    {
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                    })
 
-                const content = resp.data as Situation | Evaluation
+                    const content: Evaluation = resp.data
 
-                if (content) {
                     messages.current.push({
                         role: "assistant",
                         content
                     })
 
-                    if (isEvaluation(content)) {
-                        remainingAttempts.current -= 1
+                    remainingAttempts.current -= 1
 
-                        if (content.correct || remainingAttempts.current <= 0) {
-                            isPracticing.current = false
-                        }
+                    if (content.correct || remainingAttempts.current <= 0) {
+                        isPracticing.current = false
                     }
                 }
 
@@ -129,8 +144,12 @@ const Playground = () => {
         if (isSituation(messageContent)) {
             return (
                 <div className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground">Situation</p>
-                    <p>{messageContent.situation}</p>
+                    {messageContent.situation && (
+                        <p><span className="font-semibold">Situation:</span> {messageContent.situation}</p>
+                    )}
+                    {messageContent.follow_up_question && (
+                        <p><span className="font-semibold">Follow-up Question:</span> {messageContent.follow_up_question}</p>
+                    )}
                 </div>
             )
         }
@@ -139,19 +158,22 @@ const Playground = () => {
             if (messageContent.correct) {
                 return (
                     <div className="space-y-1">
-                        <p className="text-xs font-semibold text-green-600">Correct</p>
+                        <p className="font-semibold text-green-600">Correct</p>
                     </div>
                 )
             }
 
             return (
-                <div className="space-y-2">
-                    <p className="text-xs font-semibold text-red-600">Incorrect</p>
+                <div className="space-y-1">
+                    <p className="font-semibold text-red-600">Incorrect</p>
                     {messageContent.feedback && (
                         <p><span className="font-semibold">Feedback:</span> {messageContent.feedback}</p>
                     )}
                     {messageContent.example && (
                         <p><span className="font-semibold">Example:</span> {messageContent.example}</p>
+                    )}
+                    {messageContent.explanation && (
+                        <p><span className="font-semibold">Explanation:</span> {messageContent.explanation}</p>
                     )}
                 </div>
             )
