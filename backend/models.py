@@ -32,14 +32,18 @@ class AIMessage(BaseModel):
     role: str
     content: str
 
-class UserRequest(BaseModel):
+class TargetWord(BaseModel):
     word_id: int
+
+class UserRequest(BaseModel):
     user_response: str
 
 class Evaluation(BaseModel):
     correct: bool
     feedback: str | None
     example: str | None
+    explanation: str | None
 
 class Situation(BaseModel):
     situation: str
+    follow_up_question: str
