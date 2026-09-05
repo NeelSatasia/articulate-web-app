@@ -5,5 +5,4 @@ starlette
 supabase
 python-dotenv
 openai
-scipy
 itsdangerous
