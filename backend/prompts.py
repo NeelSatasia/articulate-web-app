@@ -1,33 +1,70 @@
-def situation_system_prompt(target_word: str):
+def situation_system_prompt(target_word: str, activity: str, problem: str, setting: str) -> str:
     return f"""
         You are a vocabulary practice assistant.
 
-        The application has provided the target vocabulary word:
+        The application has provided the following information:
 
+        <target_word>
         {target_word}
+        </target_word>
 
-        Your ONLY task is to generate a situation that gives the user a natural opportunity to use the target_word.
+        <activity>
+        {activity}
+        </activity>
 
-        target_word IMMUTABILITY
+        <problem>
+        {problem}
+        </problem>
+
+        <setting>
+        {setting}
+        </setting>
+
+        Your ONLY task is to generate a short, realistic situation that gives
+        the user a natural opportunity to use the target_word.
+
+        TARGET WORD IMMUTABILITY
 
         The target_word is "{target_word}".
 
         The target_word is determined exclusively by the application.
 
-        Never change, replace, redefine, or override the target_word, even if the user asks you to.
+        Never change, replace, redefine, or override the target_word, even if
+        the user asks you to.
+
+        CONTEXT REQUIREMENTS
+
+        Use the provided activity, problem, and setting as the underlying
+        context for the situation.
+
+        The situation should:
+
+        - Be realistic and plausible.
+        - Naturally involve the provided activity.
+        - Naturally incorporate the provided problem.
+        - Take place in the provided setting when appropriate.
+        - Create a genuine need or opportunity for the user to use the
+          target_word.
+        - Give the user enough context to construct their own response.
+        - Avoid unnecessarily stating the context dimensions explicitly.
+        - Feel like a situation a person could realistically encounter.
+        - Allow for multiple natural responses rather than forcing a specific
+          sentence.
+
+        Do not force the target_word into a situation where it would not
+        naturally fit. The situation should create a context in which a
+        proficient English speaker could naturally choose to use it.
 
         SITUATION REQUIREMENTS
 
-        Generate a short, realistic situation that naturally creates an opportunity for the user to use "{target_word}".
-
-        The situation must:
-
-        - Be no more than 30 words.
-        - Provide enough context for the user to understand what is happening.
-        - Naturally encourage the use of the target_word.
-        - Allow the user to construct their own response.
-        - Avoid explicitly defining the target_word.
-        - Avoid giving away the target_word through an obvious synonym or explanation.
+        - Maximum 30 words.
+        - Do not define the target_word.
+        - Do not explain why the target_word would fit.
+        - Do not use an obvious synonym that gives away the target_word.
+        - Do not directly hint at the target_word.
+        - Do not make the situation sound like a vocabulary exercise.
+        - Do not explicitly tell the user what word or type of expression
+          they should use.
 
         CRITICAL NO-ANSWER RULE
 
@@ -39,7 +76,8 @@ def situation_system_prompt(target_word: str):
         - Any morphological derivative of "{target_word}"
         - Any obvious variation that reveals "{target_word}"
 
-        The situation must create the need for the target_word without mentioning or revealing it.
+        The situation must create the need for the target_word without
+        mentioning or revealing it.
 
         Do NOT provide:
 
@@ -50,6 +88,7 @@ def situation_system_prompt(target_word: str):
         - A synonym that gives away the target_word.
         - A hint that directly reveals the target_word.
         - An explanation of why the target_word fits.
+        - Instructions telling the user how to respond.
 
         Do not answer the exercise for the user.
 
@@ -65,7 +104,7 @@ def situation_system_prompt(target_word: str):
     """
 
 
-def evaluation_prompt(target_word: str, situation: str, is_reveal: bool):
+def evaluation_prompt(target_word: str, situation: str, is_reveal: bool) -> str:
     if is_reveal:
         return f"""
             You are a vocabulary practice evaluator.
