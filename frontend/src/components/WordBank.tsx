@@ -6,7 +6,7 @@ import "/src/WordBank.css"
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
-import { falseStr, initAuthInLocalStorage, isAuth, loadingStr, savingStr, setAuthInLocalStorage, trueStr, type Category, type WordPhrase } from '../commons'
+import { ErrorAlertDialog, falseStr, initAuthInLocalStorage, isAuth, loadingStr, savingStr, setAuthInLocalStorage, trueStr, type Category, type WordPhrase, type ErrorAlert } from '../commons'
 import Loading from './Loading'
 import { Navigate } from 'react-router-dom'
 
@@ -26,7 +26,6 @@ const WordBank = () => {
     const newWordPhrases = useRef<Map<number, string[]>>(new Map())
 
     const modifyExistingCategories = useRef<Map<number, string>>(new Map())
-    const modifyExistingWordPhrases = useRef<Map<number, Map<number, string>>>(new Map())
 
     const deleteExistingCategories = useRef<Set<number>>(new Set())
     const deleteExistingWordPhrases = useRef<Map<number, Set<number>>>(new Map())
@@ -48,6 +47,8 @@ const WordBank = () => {
     const [bulkAssignCategoryId, setBulkAssignCategoryId] = useState<string>("")
 
     const importFileInputRef = useRef<HTMLInputElement>(null)
+
+    const [error, setError] = useState<ErrorAlert>({title: "", detail: ""})
 
     initAuthInLocalStorage()
 
@@ -131,14 +132,6 @@ const WordBank = () => {
         }
 
         setManualRendersCount(prev => prev + 1)
-    }
-
-    const changeExisitingWordPhrase = (categoryID: number, wordID: number, newValue: string) => {
-        if (!modifyExistingWordPhrases.current.has(categoryID)) {
-            modifyExistingWordPhrases.current.set(categoryID, new Map<number, string>())
-        }
-
-        modifyExistingWordPhrases.current.get(categoryID)?.set(wordID, newValue)
     }
 
     const changeCategoryMode = () => {
@@ -325,16 +318,35 @@ const WordBank = () => {
 
         if (editMode) {
 
-            setSaving(true)
+            let is_valid = true
 
-            //TODO: check if modified/new entries are empty
+            for (const [_, categoryName] of modifyExistingCategories.current) {
+                if (categoryName.trim().length == 0 || categoryName.trim().length > 30) {
+                    is_valid = false
+                    setError({title: "Invalid Input", detail: "Category name cannot be empty and more than 30 characters long.."})
+                    return
+                }
+            }
+
+            if (is_valid) {
+                for (const [_, wordPhrases] of newWordPhrases.current) {
+                    for (const wordPhrase of wordPhrases) {
+                        if (wordPhrase.trim().length <= 3) {
+                            is_valid = false
+                            setError({title: "Invalid Input", detail: "Words must be between 4 to 15 characters long."})
+                            return
+                        }
+                    }
+                }
+            }
+
+            setSaving(true)
 
             if (localStorage.getItem(isAuth) === trueStr && deleteExistingCategories.current.size > 0) {
                 deleteExistingCategories.current.forEach((categoryID: number) => {
                     wordBank.current.delete(categoryID)
                     categories.current.delete(categoryID)
                     deleteExistingWordPhrases.current.delete(categoryID)
-                    modifyExistingWordPhrases.current.delete(categoryID)
                     modifyExistingCategories.current.delete(categoryID)
                 })
 
@@ -353,12 +365,6 @@ const WordBank = () => {
                 deleteExistingWordPhrases.current.forEach((wordIDs: Set<number>, categoryID: number) => {
                     for (const wordID of wordIDs) {
                         wordBank.current.get(categoryID)?.delete(wordID)
-                        if (modifyExistingWordPhrases.current.has(categoryID)) {
-                            modifyExistingWordPhrases.current.get(categoryID)?.delete(wordID)
-                            if (modifyExistingWordPhrases.current.get(categoryID)?.size == 0) {
-                                modifyExistingWordPhrases.current.delete(categoryID)
-                            }
-                        }
                     }
                 })
 
@@ -401,32 +407,6 @@ const WordBank = () => {
                         setAuthInLocalStorage(error)
                         console.error("Error modifying requested categories", error)
                     }
-                }
-            }
-
-            if (localStorage.getItem(isAuth) === trueStr && modifyExistingWordPhrases.current.size > 0) {
-                modifyExistingWordPhrases.current.forEach((wordPhrases: Map<number, string>, categoryID: number) => {
-                    wordPhrases.forEach((modifiedWordPhrase: string, wordID: number) => {
-                        wordBank.current.get(categoryID)?.set(wordID, modifiedWordPhrase)
-                    })
-                })
-
-                const jsonData: Record<number, Record<number, string>> = {}
-
-                modifyExistingWordPhrases.current.forEach((wordPhrases: Map<number, string>, categoryID: number) => {
-                    jsonData[categoryID] = {}
-
-                    wordPhrases.forEach((modifiedWordPhrase: string, wordID: number) => {
-                        jsonData[categoryID][wordID] = modifiedWordPhrase
-                    })
-                })
-
-                try {
-                    await api.put('/ai/word-phrases', jsonData)
-
-                } catch (error) {
-                    setAuthInLocalStorage(error)
-                    console.error("Error modifying requested word-phrases", error)
                 }
             }
 
@@ -476,7 +456,9 @@ const WordBank = () => {
 
                     setManualRendersCount(prev => prev + 1)
 
-                } catch (error) {
+                } 
+                
+                catch (error) {
                     setAuthInLocalStorage(error)
                     console.error("Error adding newly requested word-phrases", error)
                 }
@@ -515,7 +497,6 @@ const WordBank = () => {
     }
 
     const clearTempData = () => {
-        modifyExistingWordPhrases.current.clear()
         newWordPhrases.current.clear()
         deleteExistingWordPhrases.current.clear()
         deleteExistingCategories.current.clear()
@@ -529,11 +510,21 @@ const WordBank = () => {
 
     return (
         <div className="w-full p-4 sm:p-6">
+            <ErrorAlertDialog
+                open={error.detail !== ""}
+                errorDetail={error.detail}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setError({title: "", detail: ""})
+                    }
+                }}
+                title={error.title}
+            />
             <div>
                 <div className="mb-5 rounded-lg border bg-card p-4">
-                    <h1 className="text-2xl font-semibold">Commonplace Book</h1>
+                    <h1 className="text-2xl font-semibold">Word Bank</h1>
                     <p className="mt-1 text-sm text-muted-foreground">
-                        Organize your categories and word-phrases. Expand a category to view or edit its entries.
+                        Organize your categories and words. Expand a category to view or edit its entries.
                     </p>
 
                     <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -642,7 +633,7 @@ const WordBank = () => {
 
                 {categories.current.size == 0 ? (
                     <div className="rounded-lg border bg-card p-6 text-sm text-muted-foreground">
-                        Your commonplace book is currently empty.
+                        Your word bank is currently empty.
                     </div>
                 ) : (
                     <Accordion type="multiple" value={accordionDefaults} onValueChange={(v) => setAccordionDefaults(v)} className="space-y-4">
@@ -686,11 +677,14 @@ const WordBank = () => {
                                     <Table key={"table-" + categoryID.toString()}>
                                         <TableBody key={"tablebody-" + categoryID.toString()}>
                                             {Array.from(wordBank.current.get(categoryID) ?? []).map(([wordID, wordPhrase]) => (
-                                                <TableRow key={"existing-row-" + wordID.toString()} className="border-b border-border last:border-b-0">
+                                                <TableRow key={"existing-row-" + wordID.toString()} className="border-b last:border-b-0">
                                                     <TableCell key={"existing-cell-1-" + wordID.toString()}>
-                                                        {editMode ? <span id={"existing-span-" + wordID.toString()} className="flex items-center gap-2">
-                                                            <Checkbox id={"existing-cb-" + categoryID.toString() + wordID.toString()} className="border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onCheckedChange={(val) => modifyDeleteWordPhrases(categoryID, wordID, Boolean(val))} disabled={deleteExistingCategories.current.has(categoryID)}/>
-                                                            <Input id={"existing-input-" + categoryID.toString() + wordID.toString()} className={`${deleteExistingWordPhrases.current.get(categoryID)?.has(wordID) || deleteExistingCategories.current.has(categoryID) ? "border-red-600 text-red-600" : "border-border"}`} defaultValue={wordPhrase} onChange={(e) => changeExisitingWordPhrase(categoryID, wordID, e.target.value)} disabled={deleteExistingWordPhrases.current.get(categoryID)?.has(wordID) || deleteExistingCategories.current.has(categoryID)}/> </span> : <span className="text-sm">{wordPhrase}</span>
+                                                        {editMode ? 
+                                                            <span id={"existing-span-" + wordID.toString()} className="flex items-center gap-2">
+                                                                <Checkbox id={"existing-cb-" + categoryID.toString() + wordID.toString()} className="border-red-600 data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onCheckedChange={(val) => modifyDeleteWordPhrases(categoryID, wordID, Boolean(val))} disabled={deleteExistingCategories.current.has(categoryID)}/>
+                                                                <span id={"existing-word-phrase-" + categoryID.toString() + wordID.toString()} className={`${deleteExistingWordPhrases.current.get(categoryID)?.has(wordID) || deleteExistingCategories.current.has(categoryID) && "border-red-600 text-red-600"}`}>{wordPhrase}</span>
+                                                            </span> :
+                                                            <span id={"existing-word-phrase-" + categoryID.toString() + wordID.toString()}>{wordPhrase}</span>
                                                         }
                                                     </TableCell>
                                                 </TableRow>
@@ -700,8 +694,8 @@ const WordBank = () => {
                                                 <TableRow key={"new-row-" + index.toString()} className="border-b border-border last:border-b-0">
                                                     <TableCell key={"new-cell-1-" + index.toString()}>
                                                         <span id={"new-span-" + index.toString()} className="flex items-center gap-2">
-                                                            <Button key={"new-del-" + categoryID.toString() + index.toString()} className="bg-red-600 hover:bg-red-500" size="sm" onClick={() => deleteNewWordPhrase(categoryID, index)}>Delete</Button>
-                                                            <Input id={"new-input-" + categoryID.toString() + index.toString()} placeholder="Enter word/phrase here... " defaultValue={newWordPhrase} onChange={e => changeNewWordPhrase(categoryID, index, e.target.value)}/>
+                                                            <Button key={"del-new-word-phrase-" + categoryID.toString() + index.toString()} className="bg-red-600 hover:bg-red-500" size="sm" onClick={() => deleteNewWordPhrase(categoryID, index)}>Delete</Button>
+                                                            <Input id={"new-word-phrase-" + categoryID.toString() + index.toString()} placeholder="Enter word here... " defaultValue={newWordPhrase} onChange={e => changeNewWordPhrase(categoryID, index, e.target.value)}/>
                                                         </span>
                                                     </TableCell>
                                                 </TableRow>
