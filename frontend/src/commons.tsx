@@ -1,3 +1,14 @@
+import { Button } from "./components/ui/button"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "./components/ui/alert-dialog"
+
 export const isAuth = "isAuth"
 export const trueStr = "true"
 export const falseStr = "false"
@@ -16,6 +27,16 @@ export const setAuthInLocalStorage = (error: any) => {
     if (error.response?.status === 401) {
         localStorage.setItem(isAuth, falseStr)
     }
+}
+
+export const getErrorDetail = (error: any) => {
+    const detail = error?.response?.data?.detail
+
+    if (typeof detail === "string") {
+        return detail.replace(/^\d{3}:\s*/, "")
+    }
+
+    return "An unexpected error occurred."
 }
 
 export interface Category {
@@ -56,4 +77,39 @@ export interface Evaluation {
     feedback?: string
     example?: string
     explanation?: string
+}
+
+export interface ErrorAlertDialogProps {
+    open: boolean
+    errorDetail: string
+    onOpenChange: (open: boolean) => void
+    title?: string
+}
+
+export interface ErrorAlert {
+    title: string
+    detail: string
+}
+
+export const ErrorAlertDialog = ({
+    open,
+    errorDetail,
+    onOpenChange,
+    title = "Error",
+}: ErrorAlertDialogProps) => {
+    return (
+        <AlertDialog open={open} onOpenChange={onOpenChange}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{title}</AlertDialogTitle>
+                    <AlertDialogDescription>{errorDetail}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction asChild>
+                        <Button size="sm">Okay</Button>
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )
 }
