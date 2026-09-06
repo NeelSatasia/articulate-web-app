@@ -94,7 +94,7 @@ def situation_system_prompt(target_word: str, activity: str, problem: str, setti
 
         OUTPUT
 
-        Return ONLY the situation.
+        Return ONLY the situation and follow-up question.
 
         Do not include:
         - "Situation:"
