@@ -47,6 +47,10 @@ async def new_user_word_categories(new_word_categories: List[str], request: Requ
     user = request.session.get('user')
     
     try:
+        for category in new_word_categories:
+            if len(category.strip()) == 0 or len(category.strip()) > 30:
+                raise HTTPException(status_code=400, detail=f"A category name cannot be empty and more than 30 characters long.")
+        
         result = await run_in_threadpool(lambda: supabase.table("word_category").insert([
             {"user_id": user["user_id"], "word_category": category}
             for category in new_word_categories
@@ -68,6 +72,9 @@ async def new_user_word_phrases(new_word_phrases: Dict[int, List[str]], request:
         for category_id, phrases in new_word_phrases.items():
 
             for phrase in phrases:
+                if len(phrase.strip()) <= 3 or len(phrase.strip()) > 15:
+                    raise HTTPException(status_code=400, detail=f"A word must be between 4 to 15 characters long.")
+                
                 records.append({
                     "user_id": user["user_id"],
                     "word_category_id": category_id,
@@ -95,6 +102,10 @@ async def edit_word_categories(modified_data: Dict[int, str], supabase=Depends(g
 
         for word_category_id, new_category_name in modified_data.items():
             category_ids.append(word_category_id)
+
+            if len(new_category_name.strip()) == 0 or len(new_category_name.strip()) > 30:
+                    raise HTTPException(status_code=400, detail=f"A category name cannot be empty and more than 30 characters long.")
+            
             updated_category_names.append(new_category_name)
 
         await run_in_threadpool(lambda: supabase.rpc("update_word_categories", {
