@@ -23,7 +23,7 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
         raise HTTPException(status_code=401, detail="User not authenticated")
 
     try:
-        if request.session["user"]["target_word_id"]:
+        if request.session["user"]["target_word_id"] is not None:
             raise HTTPException(status_code=400, detail="A practice session is already in progress. Please complete it before starting a new one.")
 
         result = await run_in_threadpool(lambda: supabase.table("word_bank")
@@ -89,6 +89,7 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
 @router.post("/validate-user-response")
 async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depends(get_user_client)):
     user = request.session.get('user')
@@ -106,7 +107,7 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
         target_word = request.session["user"]["target_word"]
         messages = []
 
-        if target_word:
+        if target_word is not None:
             if len(trimmed_user_response) == 0 or len(trimmed_user_response) > 1000:
                 raise HTTPException(status_code=400, detail="User response cannot be empty or greater than 1000 characters when continuing a practice session.")
 
@@ -132,7 +133,7 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
 
         request.session["user"]["ai_responses"] += 1
 
-        if response.correct:
+        if response.correct == True:
             request.session["user"]["is_correct"] = True
             request.session["user"]["success_attempts"] += 1
             request.session["user"]["avg_success_attempts"] = (request.session["user"]["avg_success_attempts"] + request.session["user"]["user_responses"]) / 2
@@ -158,7 +159,7 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
                                         .execute()
                                     )
 
-        if response.correct or request.session["user"]["ai_responses"] >= 3 or request.session["user"]["user_responses"] >= 3:
+        if response.correct == True or request.session["user"]["ai_responses"] >= 3 or request.session["user"]["user_responses"] >= 3:
             request.session["user"]["target_word_id"] = None
             request.session["user"]["target_word"] = None
 
