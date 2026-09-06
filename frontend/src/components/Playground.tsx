@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import api from "../api"
-import {isAuth, loadingStr, setAuthInLocalStorage, trueStr, type ChatMessage, type Evaluation, type Situation, type WordPhrase} from "../commons"
+import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, setAuthInLocalStorage, trueStr, type ChatMessage, type Evaluation, type Situation, type WordPhrase, type ErrorAlert } from "../commons"
 import Loading from "./Loading"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
@@ -41,6 +41,7 @@ const Playground = () => {
     const [speechSupported, setSpeechSupported] = useState<boolean>(true)
     const [isListening, setIsListening] = useState<boolean>(false)
     const [currentIndex, setCurrentIndex] = useState<number>(0)
+    const [error, setError] = useState<ErrorAlert>({ title: "", detail: "" })
     const messages = useRef<ChatMessage[]>([])
     const remainingAttempts = useRef<number>(3)
     const isPracticing = useRef<boolean>(false)
@@ -49,7 +50,7 @@ const Playground = () => {
 
     const location = useLocation()
     
-    const words: WordPhrase[] = location.state?.words
+    const words: WordPhrase[] = location.state?.words || []
 
     const capitalizeFirstLetterOfFirstWord = (value: string) => {
         return value.replace(/^(\s*)(\S)/, (_, leadingSpace: string, firstChar: string) => {
@@ -81,11 +82,17 @@ const Playground = () => {
                     })
 
                     const content: Situation = resp.data
+                    
+                    if (content) {
+                        messages.current.push({
+                            role: "assistant",
+                            content
+                        })
+                    }
 
-                    messages.current.push({
-                        role: "assistant",
-                        content
-                    })
+                    else {
+                        setError({title: "AI Generation Error", detail: "Failed to generate a situation for the current word. Please try again."})
+                    }
                 } 
                 
                 else {
@@ -99,26 +106,40 @@ const Playground = () => {
                     })
 
                     const content: Evaluation = resp.data
+                    
+                    if (content) {
+                        messages.current.push({
+                            role: "assistant",
+                            content
+                        })
 
-                    messages.current.push({
-                        role: "assistant",
-                        content
-                    })
+                        remainingAttempts.current -= 1
 
-                    remainingAttempts.current -= 1
+                        if (content.correct || remainingAttempts.current <= 0) {
+                            isPracticing.current = false
+                        }
+                    }
 
-                    if (content.correct || remainingAttempts.current <= 0) {
-                        isPracticing.current = false
+                    else {
+                        setError({title: "AI Evaluation Error", detail: "Failed to evaluate. Please try again."})
                     }
                 }
 
                 setUserResponse("")
-            } catch (err: any) {
-                console.error("Error generating model response", err)
+            } 
+            
+            catch (err: any) {
+                if (err?.response?.data?.detail !== undefined) {
+                    setError({title: "Unable to continue the practice", detail: getErrorDetail(err)})
+                }
             }
-        } catch (err) {
+        } 
+        
+        catch (err) {
             console.error("Error calling AI model", err)
-        } finally {
+        } 
+        
+        finally {
             setIsModelLoading(false)
         }
     }
@@ -314,6 +335,10 @@ const Playground = () => {
         }
     }, [])
 
+    if (words.length === 0) {
+        return <Navigate to="/dashboard" replace />
+    }
+
     if (loading) {
         return <Loading spinnerAction={loadingStr}/>
     }
@@ -324,6 +349,17 @@ const Playground = () => {
 
     return (
         <div className="h-screen h-full min-h-0 w-full overflow-hidden p-3">
+            <ErrorAlertDialog
+                open={error.detail !== ""}
+                errorDetail={error.detail}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setError({ title: "", detail: "" })
+                    }
+                }}
+                title={error.title}
+            />
+
             <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col gap-4 overflow-hidden rounded-3xl border border-border p-4">
                 <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border bg-background px-5 py-4">
                     <div>
