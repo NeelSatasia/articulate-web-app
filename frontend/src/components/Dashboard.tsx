@@ -13,6 +13,8 @@ const Dashboard = () => {
     const [loading, setLoading] = useState<boolean>(true)
     const [words, setWords] = useState<WordPhrase[]>([])
 
+    const SUCCESS_ATTEMPTS_FACTOR = 3
+
     useEffect(() => {
         const getWords = async () => {
             try {
@@ -44,14 +46,15 @@ const Dashboard = () => {
                 continue
             }
 
-            const avg = Number(word.avg_success_attempts ?? 0)
-            const successAttempts = Number(word.success_attempts ?? 0)
+            const avg = word.avg_success_attempts
+            const successAttempts = word.success_attempts
+            const failedAttempts = word.failed_attempts
 
-            if (avg > 2.0 || successAttempts == 0) {
+            if (avg > 2.0 || successAttempts * SUCCESS_ATTEMPTS_FACTOR <= failedAttempts) {
                 rows[0].words.push(word)
             }
 
-            else if (avg <= 1.1 && successAttempts >= 20) {
+            else if (avg <= 1.1 && successAttempts >= 20 && successAttempts * SUCCESS_ATTEMPTS_FACTOR > failedAttempts) {
                 rows[2].words.push(word)
             }
 
