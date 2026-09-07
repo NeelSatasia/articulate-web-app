@@ -6,7 +6,7 @@ import "/src/WordBank.css"
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
-import { ErrorAlertDialog, falseStr, initAuthInLocalStorage, isAuth, loadingStr, savingStr, setAuthInLocalStorage, trueStr, type Category, type WordPhrase, type ErrorAlert } from '../commons'
+import { ErrorAlertDialog, falseStr, initAuthInLocalStorage, getErrorDetail, AuthError, isAuth, loadingStr, savingStr, trueStr, type Category, type WordPhrase, type ErrorAlert } from '../commons'
 import Loading from './Loading'
 import { Navigate } from 'react-router-dom'
 
@@ -87,9 +87,18 @@ const WordBank = () => {
                     updateAccordionDefaults()
                 }
 
-            } catch (error: any) {
-                setAuthInLocalStorage(error)
-                console.error("Error fetching user word-bank", error)
+            } catch (err: any) {
+                if (err?.response?.data?.detail !== undefined) {
+                    const statusCode = Number(err.response.data.detail.split(":")[0])
+
+                    if (statusCode === 401) {
+                        setError(AuthError)
+                    } 
+                    
+                    else {
+                        setError({title: "Error Fetching Word Bank", detail: getErrorDetail(err)})
+                    }
+                }
             } finally {
                 setLoading(false)
             }
@@ -323,7 +332,7 @@ const WordBank = () => {
             for (const [_, categoryName] of modifyExistingCategories.current) {
                 if (categoryName.trim().length == 0 || categoryName.trim().length > 30) {
                     is_valid = false
-                    setError({title: "Invalid Input", detail: "Category name cannot be empty and more than 30 characters long.."})
+                    setError({title: "Invalid Input", detail: "Category name cannot be empty or have more than 30 characters long.."})
                     return
                 }
             }
@@ -331,8 +340,14 @@ const WordBank = () => {
             if (is_valid) {
                 for (const [_, wordPhrases] of newWordPhrases.current) {
                     for (const wordPhrase of wordPhrases) {
-                        if (wordPhrase.trim().length <= 3) {
-                            is_valid = false
+                        for (const char of wordPhrase) {
+                            if (!/^[a-zA-Z]+$/.test(char)) {
+                                setError({title: "Invalid Input", detail: "Words must contain only alphabetic characters."})
+                                return
+                            }
+                        }
+
+                        if (wordPhrase.trim().length <= 3 || wordPhrase.trim().length > 15) {
                             setError({title: "Invalid Input", detail: "Words must be between 4 to 15 characters long."})
                             return
                         }
@@ -355,9 +370,19 @@ const WordBank = () => {
                 try {
                     await api.delete('/wordbank/categories', {data: jsonData})
 
-                } catch (error: any) {
-                    setAuthInLocalStorage(error)
-                    console.error("Error deleting requested categories", error)
+                } catch (err: any) {
+                    if (err?.response?.data?.detail !== undefined) {
+                        const statusCode = Number(err.response.data.detail.split(":")[0])
+
+                        if (statusCode === 401) {
+                            localStorage.setItem(isAuth, falseStr)
+                            setError(AuthError)
+                        } 
+                        
+                        else {
+                            setError({title: "Error Deleting Requested Categories", detail: getErrorDetail(err)})
+                        }
+                    }
                 }
             }
 
@@ -379,9 +404,19 @@ const WordBank = () => {
                 try {
                     await api.delete('/wordbank/word-phrases', {data: jsonData})
 
-                } catch (error) {
-                    setAuthInLocalStorage(error)
-                    console.error("Error deleting requested word-phrases", error)
+                } catch (err: any) {
+                    if (err?.response?.data?.detail !== undefined) {
+                        const statusCode = Number(err.response.data.detail.split(":")[0])
+
+                        if (statusCode === 401) {
+                            localStorage.setItem(isAuth, falseStr)
+                            setError(AuthError)
+                        } 
+                        
+                        else {
+                            setError({title: "Error Deleting Requested Words", detail: getErrorDetail(err)})
+                        }
+                    }
                 }
             }
 
@@ -391,6 +426,8 @@ const WordBank = () => {
                 let count = 0
 
                 modifyExistingCategories.current.forEach((newCategoryName: string, categoryID: number) => {
+                    newCategoryName = newCategoryName.trim()
+
                     if (newCategoryName !== categories.current.get(categoryID)) {
                         count += 1
                         jsonData[categoryID] = newCategoryName
@@ -403,9 +440,19 @@ const WordBank = () => {
                         await api.put('/wordbank/categories', jsonData)
 
                         updateAccordionDefaults()
-                    } catch (error) {
-                        setAuthInLocalStorage(error)
-                        console.error("Error modifying requested categories", error)
+                    } catch (err: any) {
+                        if (err?.response?.data?.detail !== undefined) {
+                            const statusCode = Number(err.response.data.detail.split(":")[0])
+
+                            if (statusCode === 401) {
+                                localStorage.setItem(isAuth, falseStr)
+                                setError(AuthError)
+                            } 
+                            
+                            else {
+                                setError({title: "Error Modifying Requested Categories", detail: getErrorDetail(err)})
+                            }
+                        }
                     }
                 }
             }
@@ -433,9 +480,19 @@ const WordBank = () => {
                         updateAccordionDefaults()
                     })
 
-                } catch (error) {
-                    setAuthInLocalStorage(error)
-                    console.error("Error adding new requested word-categories", error)
+                } catch (err: any) {
+                    if (err?.response?.data?.detail !== undefined) {
+                        const statusCode = Number(err.response.data.detail.split(":")[0])
+
+                        if (statusCode === 401) {
+                            localStorage.setItem(isAuth, falseStr)
+                            setError(AuthError)
+                        } 
+                        
+                        else {
+                            setError({title: "Error Adding New Categories", detail: getErrorDetail(err)})
+                        }
+                    }
                 }
             }
             
@@ -458,9 +515,19 @@ const WordBank = () => {
 
                 } 
                 
-                catch (error) {
-                    setAuthInLocalStorage(error)
-                    console.error("Error adding newly requested word-phrases", error)
+                catch (err: any) {
+                    if (err?.response?.data?.detail !== undefined) {
+                        const statusCode = Number(err.response.data.detail.split(":")[0])
+
+                        if (statusCode === 401) {
+                            localStorage.setItem(isAuth, falseStr)
+                            setError(AuthError)
+                        } 
+                        
+                        else {
+                            setError({title: "Error Adding New Words", detail: getErrorDetail(err)})
+                        }
+                    }
                 }
             }
             
