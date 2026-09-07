@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 import api from "../api"
-import {isAuth, loadingStr, setAuthInLocalStorage, trueStr, type WordPhrase} from "../commons"
+import {AuthError, ErrorAlertDialog, falseStr, getErrorDetail, isAuth, loadingStr, trueStr, type ErrorAlert, type WordPhrase} from "../commons"
 import Loading from "./Loading"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion"
 import { Button } from "./ui/button"
@@ -12,6 +12,7 @@ const Dashboard = () => {
     const navigate = useNavigate()
     const [loading, setLoading] = useState<boolean>(true)
     const [words, setWords] = useState<WordPhrase[]>([])
+    const [error, setError] = useState<ErrorAlert>({title: "", detail: ""})
 
     const SUCCESS_ATTEMPTS_FACTOR = 3
 
@@ -21,9 +22,19 @@ const Dashboard = () => {
                 const resp = await api.get("/wordbank")
                 localStorage.setItem(isAuth, trueStr)
                 setWords(resp.data)
-            } catch (error: any) {
-                setAuthInLocalStorage(error)
-                console.error("Error checking authentication", error)
+            } catch (err: any) {
+                if (err?.response?.data?.detail !== undefined) {
+                    const statusCode = Number(err.response.data.detail.split(":")[0])
+
+                    if (statusCode === 401) {
+                        localStorage.setItem(isAuth, falseStr)
+                        setError(AuthError)
+                    } 
+                    
+                    else {
+                        setError({title: "Error Fetching Word Bank", detail: getErrorDetail(err)})
+                    }
+                }
             } finally {
                 setLoading(false)
             }
@@ -90,6 +101,17 @@ const Dashboard = () => {
 
     return (
         <div className="w-full p-4 sm:p-6">
+            <ErrorAlertDialog
+                open={error.detail !== ""}
+                errorDetail={error.detail}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setError({ title: "", detail: "" })
+                    }
+                }}
+                title={error.title}
+            />
+
             <h1 className="text-2xl font-semibold mb-4">Dashboard</h1>
 
             <Accordion type="multiple" defaultValue={categories.map(c => c.id)} className="space-y-4">
