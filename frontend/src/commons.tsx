@@ -23,12 +23,6 @@ export const initAuthInLocalStorage = () => {
     }
 }
 
-export const setAuthInLocalStorage = (error: any) => {
-    if (error.response?.status === 401) {
-        localStorage.setItem(isAuth, falseStr)
-    }
-}
-
 export const getErrorDetail = (error: any) => {
     const detail = error?.response?.data?.detail
 
@@ -52,14 +46,6 @@ export interface WordPhrase {
     failed_attempts: number
     avg_success_attempts: number
     last_attempted_at: string | null
-}
-
-export interface VocabularyWord {
-    word_id: number
-    word: string
-    definition: string
-    example: string
-    word_level: number
 }
 
 export interface ChatMessage {
@@ -89,6 +75,11 @@ export interface ErrorAlertDialogProps {
 export interface ErrorAlert {
     title: string
     detail: string
+}
+
+export const AuthError : ErrorAlert = {
+    title: "Authentication Error",
+    detail: "Your session has expired. Please log in again."
 }
 
 export const ErrorAlertDialog = ({
