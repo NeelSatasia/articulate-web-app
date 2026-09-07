@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import api from "../api"
-import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, setAuthInLocalStorage, trueStr, type ChatMessage, type Evaluation, type Situation, type WordPhrase, type ErrorAlert } from "../commons"
+import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, trueStr, type ChatMessage, type Evaluation, type Situation, type WordPhrase, type ErrorAlert, AuthError, falseStr } from "../commons"
 import Loading from "./Loading"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
@@ -130,7 +130,16 @@ const Playground = () => {
             
             catch (err: any) {
                 if (err?.response?.data?.detail !== undefined) {
-                    setError({title: "Unable to continue the practice", detail: getErrorDetail(err)})
+                    const statusCode = Number(err.response.data.detail.split(":")[0])
+
+                    if (statusCode === 401) {
+                        localStorage.setItem(isAuth, falseStr)
+                        setError(AuthError)
+                    } 
+                    
+                    else {
+                        setError({title: "Unable to continue the practice", detail: getErrorDetail(err)})
+                    }
                 }
             }
         } 
@@ -272,9 +281,10 @@ const Playground = () => {
             try {
                 await api.get("/auth/check")
                 localStorage.setItem(isAuth, trueStr)
-            } catch (error: any) {
-                setAuthInLocalStorage(error)
-                console.error("Error checking authentication", error)
+            } catch (err: any) {
+                if (err?.response?.data?.detail !== undefined) {
+                    setError(AuthError)
+                }
             } finally {
                 setLoading(false)
             }
@@ -374,9 +384,9 @@ const Playground = () => {
                 </div>
 
                 <div className="flex shrink-0 flex-wrap gap-3">
-                    <Button onClick={previousWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={currentIndex === 0}>Back</Button>
-                    <Button onClick={practiceWord} className="w-fit rounded-full bg-primary px-5 text-primary-foreground shadow-none transition hover:opacity-90" disabled={!isPracticing}>Practice</Button>
-                    <Button onClick={nextWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={currentIndex >= words.length - 1}>Next</Button>
+                    <Button onClick={previousWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={isModelLoading || currentIndex === 0}>Back</Button>
+                    <Button onClick={practiceWord} className="w-fit rounded-full bg-primary px-5 text-primary-foreground shadow-none transition hover:opacity-90" disabled={isModelLoading || !isPracticing}>Practice</Button>
+                    <Button onClick={nextWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={isModelLoading || currentIndex >= words.length - 1}>Next</Button>
                 </div>
 
 
