@@ -15,7 +15,7 @@ export const falseStr = "false"
 export const loadingStr = "Loading"
 export const savingStr = "Saving"
 export let userName = "userName"
-export const backendServiceURL = "http://localhost:8000"
+export const backendServiceURL = import.meta.env.VITE_BACKEND_URL
 
 export const initAuthInLocalStorage = () => {
     if (localStorage.getItem(isAuth) === null) {
