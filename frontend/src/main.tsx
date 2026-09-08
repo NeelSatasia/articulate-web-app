@@ -6,6 +6,7 @@ import WordBank from './components/WordBank.tsx'
 import Dashboard from './components/Dashboard.tsx'
 import Layout from './components/Layout.tsx'
 import Playground from './components/Playground.tsx'
+import { ThemeProvider } from './components/theme-provider.tsx'
 
 const router = createBrowserRouter([
     {path: "/", element: <App />},
@@ -21,6 +22,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
     
-    <RouterProvider router={router} />
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <RouterProvider router={router} />
+    </ThemeProvider>
     
 )
