@@ -45,10 +45,10 @@ const Dashboard = () => {
 
     const categories = (() => {
         const rows: { id: string; title: string; color: string; words: WordPhrase[] }[] = [
-            { id: "needs-review", title: "Needs review", color: "text-red-600", words: [] },
-            { id: "getting-there", title: "Getting there", color: "text-orange-500", words: [] },
-            { id: "strong", title: "Strong", color: "text-green-600", words: [] },
-            { id: "not-attempted-yet", title: "Not attempted yet", color: "text-gray-500", words: [] }
+            { id: "needs-review", title: "Needs review", color: "text-red-400", words: [] },
+            { id: "making-progress", title: "Making progress", color: "text-orange-400", words: [] },
+            { id: "strong", title: "Strong", color: "text-green-400", words: [] },
+            { id: "not-attempted-yet", title: "Not attempted yet", color: "text-gray-400", words: [] }
         ]
 
         for (const word of words) {
