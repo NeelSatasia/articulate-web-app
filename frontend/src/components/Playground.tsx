@@ -1,11 +1,12 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import api from "../api"
-import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, trueStr, type ChatMessage, type Evaluation, type Situation, type WordPhrase, type ErrorAlert, AuthError, falseStr } from "../commons"
+import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, trueStr, type ChatMessage, type Evaluation, type Situation, type WordPhrase, type ErrorAlert, AuthError, falseStr, WhiteLabelBlock } from "../commons"
 import Loading from "./Loading"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
 import { Spinner } from "./ui/spinner"
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 type SpeechRecognitionResultLike = {
     isFinal: boolean
@@ -67,86 +68,80 @@ const Playground = () => {
     }
 
     const generateModelResponse = async () => {
+        setIsModelLoading(true)
+        
         try {
-            setIsModelLoading(true)
-            
-            try {
 
-                if (messages.current.length == 0) {
-                    const resp = await api.post("/ai/generate-situation", {
-                        word_id: words[currentIndex].word_id}, 
-                        {
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
+            if (messages.current.length == 0) {
+                const resp = await api.post("/ai/generate-situation", {
+                    word_id: words[currentIndex].word_id}, 
+                    {
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                })
+
+                const content: Situation = resp.data
+                
+                if (content) {
+                    messages.current.push({
+                        role: "assistant",
+                        content
+                    })
+                }
+
+                else {
+                    setError({title: "AI Generation Error", detail: "Failed to generate a situation for the current word. Please try again."})
+                }
+            } 
+            
+            else {
+                const resp = await api.post("/ai/validate-user-response", {
+                    user_response: userResponse.trim()
+                },
+                {
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                })
+
+                const content: Evaluation = resp.data
+                
+                if (content) {
+                    messages.current.push({
+                        role: "assistant",
+                        content
                     })
 
-                    const content: Situation = resp.data
-                    
-                    if (content) {
-                        messages.current.push({
-                            role: "assistant",
-                            content
-                        })
-                    }
+                    remainingAttempts.current -= 1
 
-                    else {
-                        setError({title: "AI Generation Error", detail: "Failed to generate a situation for the current word. Please try again."})
+                    if (content.correct || remainingAttempts.current <= 0) {
+                        isPracticing.current = false
                     }
+                }
+
+                else {
+                    setError({title: "AI Evaluation Error", detail: "Failed to evaluate. Please try again."})
+                }
+            }
+
+            setUserResponse("")
+        } 
+        
+        catch (err: any) {
+            if (err?.response?.data?.detail !== undefined) {
+                const statusCode = Number(err.response.data.detail.split(":")[0])
+
+                if (statusCode === 401) {
+                    localStorage.setItem(isAuth, falseStr)
+                    setError(AuthError)
                 } 
                 
                 else {
-                    const resp = await api.post("/ai/validate-user-response", {
-                        user_response: userResponse.trim()
-                    },
-                    {
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                    })
-
-                    const content: Evaluation = resp.data
-                    
-                    if (content) {
-                        messages.current.push({
-                            role: "assistant",
-                            content
-                        })
-
-                        remainingAttempts.current -= 1
-
-                        if (content.correct || remainingAttempts.current <= 0) {
-                            isPracticing.current = false
-                        }
-                    }
-
-                    else {
-                        setError({title: "AI Evaluation Error", detail: "Failed to evaluate. Please try again."})
-                    }
-                }
-
-                setUserResponse("")
-            } 
-            
-            catch (err: any) {
-                if (err?.response?.data?.detail !== undefined) {
-                    const statusCode = Number(err.response.data.detail.split(":")[0])
-
-                    if (statusCode === 401) {
-                        localStorage.setItem(isAuth, falseStr)
-                        setError(AuthError)
-                    } 
-                    
-                    else {
-                        setError({title: "Unable to continue the practice", detail: getErrorDetail(err)})
-                    }
+                    setError({title: "Unable to continue the practice", detail: getErrorDetail(err)})
                 }
             }
-        } 
-        
-        catch (err) {
-            console.error("Error calling AI model", err)
-        } 
+        }
         
         finally {
             setIsModelLoading(false)
@@ -175,10 +170,10 @@ const Playground = () => {
             return (
                 <div className="space-y-1">
                     {messageContent.situation && (
-                        <p><span className="font-semibold">Situation:</span> {messageContent.situation}</p>
+                        <p><WhiteLabelBlock value="Situation" /> {messageContent.situation}</p>
                     )}
                     {messageContent.follow_up_question && (
-                        <p><span className="font-semibold">Follow-up Question:</span> {messageContent.follow_up_question}</p>
+                        <p><WhiteLabelBlock value="Question" /> {messageContent.follow_up_question}</p>
                     )}
                 </div>
             )
@@ -194,16 +189,16 @@ const Playground = () => {
             }
 
             return (
-                <div className="space-y-1">
-                    <p className="font-semibold text-red-600">Incorrect</p>
+                <div className="space-y-2">
+                    <p className="font-semibold text-red-400">Incorrect</p>
                     {messageContent.feedback && (
-                        <p><span className="font-semibold">Feedback:</span> {messageContent.feedback}</p>
+                        <p><WhiteLabelBlock value="Feedback" /> {messageContent.feedback}</p>
                     )}
                     {messageContent.example && (
-                        <p><span className="font-semibold">Example:</span> {messageContent.example}</p>
+                        <p><WhiteLabelBlock value="Example" /> {messageContent.example}</p>
                     )}
-                    {messageContent.explanation && (
-                        <p><span className="font-semibold">Explanation:</span> {messageContent.explanation}</p>
+                    {messageContent.answer_explanation && (
+                        <p><WhiteLabelBlock value="Explanation" /> {messageContent.answer_explanation}</p>
                     )}
                 </div>
             )
@@ -384,9 +379,9 @@ const Playground = () => {
                 </div>
 
                 <div className="flex shrink-0 flex-wrap gap-3">
-                    <Button onClick={previousWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={isModelLoading || currentIndex === 0}>Back</Button>
+                    <Button onClick={previousWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={isModelLoading || currentIndex === 0}><ArrowLeft/></Button>
                     <Button onClick={practiceWord} className="w-fit rounded-full bg-primary px-5 text-primary-foreground shadow-none transition hover:opacity-90" disabled={isModelLoading || !isPracticing}>Practice</Button>
-                    <Button onClick={nextWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={isModelLoading || currentIndex >= words.length - 1}>Next</Button>
+                    <Button onClick={nextWord} className="w-fit rounded-full border border-border bg-background px-5 text-foreground shadow-none transition hover:bg-secondary" disabled={isModelLoading || currentIndex >= words.length - 1}><ArrowRight/></Button>
                 </div>
 
 

@@ -9,6 +9,7 @@ import { Checkbox } from './ui/checkbox'
 import { ErrorAlertDialog, falseStr, initAuthInLocalStorage, getErrorDetail, AuthError, isAuth, loadingStr, savingStr, trueStr, type Category, type WordPhrase, type ErrorAlert } from '../commons'
 import Loading from './Loading'
 import { Navigate } from 'react-router-dom'
+import { Plus, Trash2 } from 'lucide-react'
 
 const WordBank = () => {
 
@@ -721,7 +722,7 @@ const WordBank = () => {
                                             ) : (
                                                 <Checkbox
                                                     id={"existing-category-cb-" + categoryID.toString()}
-                                                    className="border-red-600 dark:data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600"
+                                                    className="border-red-500 dark:data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500 data-[state=checked]:text-primary"
                                                     onCheckedChange={(val) => addExisitingCategoryToDelete(categoryID, Boolean(val))}
                                                 />
                                             )}
@@ -748,8 +749,8 @@ const WordBank = () => {
                                                     <TableCell key={"existing-cell-1-" + wordID.toString()}>
                                                         {editMode ? 
                                                             <span id={"existing-span-" + wordID.toString()} className="flex items-center gap-2">
-                                                                <Checkbox id={"existing-cb-" + categoryID.toString() + wordID.toString()} className="border-red-600 dark:data-[state=checked]:bg-red-600 data-[state=checked]:border-red-600" onCheckedChange={(val) => modifyDeleteWordPhrases(categoryID, wordID, Boolean(val))} disabled={deleteExistingCategories.current.has(categoryID)}/>
-                                                                <span id={"existing-word-phrase-" + categoryID.toString() + wordID.toString()} className={`${(deleteExistingWordPhrases.current.get(categoryID)?.has(wordID) || deleteExistingCategories.current.has(categoryID)) && "text-red-600 line-through"}`}>{wordPhrase}</span>
+                                                                <Checkbox id={"existing-cb-" + categoryID.toString() + wordID.toString()} className="border-red-500 dark:data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500 data-[state=checked]:text-primary" onCheckedChange={(val) => modifyDeleteWordPhrases(categoryID, wordID, Boolean(val))} disabled={deleteExistingCategories.current.has(categoryID)}/>
+                                                                <span id={"existing-word-phrase-" + categoryID.toString() + wordID.toString()} className={`${(deleteExistingWordPhrases.current.get(categoryID)?.has(wordID) || deleteExistingCategories.current.has(categoryID)) && "text-red-500 line-through"}`}>{wordPhrase}</span>
                                                             </span> :
                                                             <span id={"existing-word-phrase-" + categoryID.toString() + wordID.toString()}>{wordPhrase}</span>
                                                         }
@@ -761,7 +762,7 @@ const WordBank = () => {
                                                 <TableRow key={"new-row-" + index.toString()} className="border-b border-border last:border-b-0">
                                                     <TableCell key={"new-cell-1-" + index.toString()}>
                                                         <span id={"new-span-" + index.toString()} className="flex items-center gap-2">
-                                                            <Button key={"del-new-word-phrase-" + categoryID.toString() + index.toString()} className="bg-red-600 hover:bg-red-500" size="sm" onClick={() => deleteNewWordPhrase(categoryID, index)}>Delete</Button>
+                                                            <Button key={"del-new-word-phrase-" + categoryID.toString() + index.toString()} className="bg-red-500 hover:bg-red-400 text-primary" size="sm" onClick={() => deleteNewWordPhrase(categoryID, index)}><Trash2/></Button>
                                                             <Input id={"new-word-phrase-" + categoryID.toString() + index.toString()} placeholder="Enter word here... " defaultValue={newWordPhrase} onChange={e => changeNewWordPhrase(categoryID, index, e.target.value)}/>
                                                         </span>
                                                     </TableCell>
@@ -770,7 +771,7 @@ const WordBank = () => {
                                         </TableBody>
                                     </Table>
 
-                                    {editMode && <Button key={"add-new-" + categoryID.toString()} className="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-primary" onClick={() => addNewWordPhrase(categoryID)} disabled={deleteExistingCategories.current.has(categoryID)}>Add</Button>}
+                                    {editMode && <Button key={"add-new-" + categoryID.toString()} className="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-primary" onClick={() => addNewWordPhrase(categoryID)} disabled={deleteExistingCategories.current.has(categoryID)}><Plus/></Button>}
                                 </AccordionContent>
                             </AccordionItem>
                         ))}
