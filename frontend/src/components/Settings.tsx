@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { isAuth, setAuthInLocalStorage, trueStr } from "../commons"
+import { isAuth, trueStr } from "../commons"
 import api from "../api"
 import Loading from "./Loading"
 import { Navigate } from "react-router-dom"
@@ -18,7 +18,6 @@ const Settings = () => {
                     localStorage.setItem(isAuth, trueStr)
                 }
             } catch (error) {
-                setAuthInLocalStorage(error)
                 console.error("Error fetching user vocabulary", error)
             } finally {
                 setLoading(false)
