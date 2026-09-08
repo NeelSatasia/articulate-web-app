@@ -62,7 +62,7 @@ export interface Evaluation {
     correct: boolean
     feedback?: string
     example?: string
-    explanation?: string
+    answer_explanation?: string
 }
 
 export interface ErrorAlertDialogProps {
@@ -103,4 +103,8 @@ export const ErrorAlertDialog = ({
             </AlertDialogContent>
         </AlertDialog>
     )
+}
+
+export const WhiteLabelBlock = ({value} : {value: string}) => {
+    return <span className="font-semibold bg-white rounded-md p-1 text-secondary">{value}</span>
 }
