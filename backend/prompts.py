@@ -51,10 +51,6 @@ def situation_system_prompt(target_word: str, activity: str, problem: str, setti
         - Allow for multiple natural responses rather than forcing a specific
           sentence.
 
-        Do not force the target_word into a situation where it would not
-        naturally fit. The situation should create a context in which a
-        proficient English speaker could naturally choose to use it.
-
         SITUATION REQUIREMENTS
 
         - Maximum 30 words.
