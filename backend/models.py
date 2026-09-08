@@ -42,7 +42,7 @@ class Evaluation(BaseModel):
     correct: bool
     feedback: str | None
     example: str | None
-    explanation: str | None
+    answer_explanation: str | None
 
 class Situation(BaseModel):
     situation: str
