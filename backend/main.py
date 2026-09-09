@@ -28,8 +28,8 @@ app.add_middleware(
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_SESSION_KEY,
-    https_only=False,
-    #same_site="none",
+    https_only=True,
+    same_site="none",
 )
 
 #routers
