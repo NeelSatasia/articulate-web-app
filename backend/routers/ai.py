@@ -26,6 +26,13 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
         if request.session["user"]["target_word_id"] is not None:
             raise HTTPException(status_code=400, detail="A practice session is already in progress. Please complete it before starting a new one.")
 
+        response = await run_in_threadpool(lambda: supabase.rpc("update_user_ai_usage").execute())
+
+        new_usage = response.data
+
+        if new_usage is None:
+            raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day to continue using the AI features.")
+
         result = await run_in_threadpool(lambda: supabase.table("word_bank")
                                                             .select("word_phrase, success_attempts, failed_attempts, avg_success_attempts, last_attempted_at")
                                                             .eq("word_id", target_word.word_id)
@@ -98,6 +105,11 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
         raise HTTPException(status_code=401, detail="User not authenticated")
 
     try:
+
+        user_ai_usage = await run_in_threadpool(lambda: supabase.table("users").select("ai_usage_tracker").execute())
+
+        if user_ai_usage.data and user_ai_usage.data[0]["ai_usage_tracker"] >= 50:
+            raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day to continue using the AI features.")
 
         trimmed_user_response = userPrompt.user_response.strip()
 
