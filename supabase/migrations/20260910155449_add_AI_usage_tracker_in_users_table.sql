@@ -1,0 +1,1 @@
+ALTER TABLE users ADD ai_usage_tracker INT NOT NULL DEFAULT 0;
