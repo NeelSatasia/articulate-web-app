@@ -197,6 +197,8 @@ const WordBank = () => {
         newWordPhrases.current.delete(categoryID)
         categories.current.delete(categoryID)
         keysOfNewCategories.current.delete(categoryName)
+
+        setManualRendersCount(prev => prev + 1)
     }
 
     const getAvailableCategoryEntries = () => {
