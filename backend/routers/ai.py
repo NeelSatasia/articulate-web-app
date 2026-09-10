@@ -31,7 +31,7 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
         new_usage = response.data
 
         if new_usage is None:
-            raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day to continue using the AI features.")
+            raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day.")
 
         result = await run_in_threadpool(lambda: supabase.table("word_bank")
                                                             .select("word_phrase, success_attempts, failed_attempts, avg_success_attempts, last_attempted_at")
@@ -109,7 +109,7 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
         user_ai_usage = await run_in_threadpool(lambda: supabase.table("users").select("ai_usage_tracker").execute())
 
         if user_ai_usage.data and user_ai_usage.data[0]["ai_usage_tracker"] >= 50:
-            raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day to continue using the AI features.")
+            raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day.")
 
         trimmed_user_response = userPrompt.user_response.strip()
 
