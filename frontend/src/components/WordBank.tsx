@@ -716,9 +716,7 @@ const WordBank = () => {
                                     <div className="p-4 pb-2">
                                         <div className="flex items-center gap-2">
                                             {categoryID < 0 ? (
-                                                <Button key={"new-category" + categoryID.toString()} className="bg-red-600 hover:bg-red-500" size="sm" onClick={() => deleteNewCategory(categoryID, categoryName)}>
-                                                    Delete
-                                                </Button>
+                                                <Button key={"new-category" + categoryID.toString()} className="bg-red-500 hover:bg-red-400 text-primary" size="sm" onClick={() => deleteNewCategory(categoryID, categoryName)}><Trash2/></Button>
                                             ) : (
                                                 <Checkbox
                                                     id={"existing-category-cb-" + categoryID.toString()}
