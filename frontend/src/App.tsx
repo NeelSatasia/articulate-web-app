@@ -29,7 +29,7 @@ function App() {
                         <div className="rounded-2xl border bg-card p-5 shadow-sm">
                             <BookText className="size-5 text-primary" />
                             <p className="mt-4 text-sm font-semibold">Word bank control</p>
-                            <p className="mt-2 text-sm leading-6 text-muted-foreground">Create categories, add new phrases, and keep everything organized in one place.</p>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">Create categories, add new words, and keep everything organized in one place.</p>
                         </div>
                         <div className="rounded-2xl border bg-card p-5 shadow-sm">
                             <Layers3 className="size-5 text-primary" />
@@ -67,7 +67,7 @@ function App() {
                             </div>
                             <div>
                                 <p className="text-sm font-semibold">1. Organize words</p>
-                                <p className="text-sm text-muted-foreground">Add categories and phrases to your bank.</p>
+                                <p className="text-sm text-muted-foreground">Add categories and words to your bank.</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3">
