@@ -119,7 +119,7 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
 
         target_word = request.session["user"]["target_word"]
 
-        return Evaluation(correct=False, feedback=request.session["user"]["target_word"], example=None, answer_explanation=None)
+        return Evaluation(correct=False, feedback=str(dict(request.session.items())), example=None, answer_explanation=None)
         messages = []
 
         if target_word is not None:
