@@ -63,6 +63,7 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
             new_target_word = result.data[0]["word_phrase"]
 
             request.session["user"]["target_word"] = new_target_word
+            return Situation(situation=request.session["user"]["target_word"], follow_up_question="")
             request.session["user"]["target_word_id"] = target_word.word_id
             request.session["user"]["situation"] = None
             request.session["user"]["user_responses"] = 0
