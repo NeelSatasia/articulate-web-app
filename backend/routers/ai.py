@@ -118,6 +118,8 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
             raise HTTPException(status_code=400, detail="The practice session has ended. Please start a new session.")
 
         target_word = request.session["user"]["target_word"]
+
+        return Evaluation(correct=False, feedback=request.session["user"]["target_word"], example=None, answer_explanation=None)
         messages = []
 
         if target_word is not None:
