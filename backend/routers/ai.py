@@ -15,7 +15,59 @@ openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
-@router.post("/generate-situation")
+
+# GET ---------------------------------------------------------------------------------------------------------------------------------------
+
+@router.get("/generate-situation")
+async def generate_situation(request: Request, supabase=Depends(get_user_client)):
+    user = request.session.get("user")
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    try:
+        response = await run_in_threadpool(lambda: supabase.rpc("update_user_ai_usage").execute())
+        
+        new_usage = response.data
+
+        if new_usage is None:
+            raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day.")
+
+        random_situation_id = random.randint(1, 1_450_145)
+
+        situation_constraints = await run_in_threadpool(lambda: supabase 
+                                .table("context_combinations")
+                                .select("""
+                                    activities(activity),
+                                    problems(problem),
+                                    settings(setting)
+                                """) 
+                                .eq("combination_id", random_situation_id) 
+                                .single()
+                                .execute())
+
+        activity = situation_constraints.data["activities"]["activity"]
+        problem = situation_constraints.data["problems"]["problem"]
+        setting = situation_constraints.data["settings"]["setting"]
+
+        messages = [AIMessage(role="system", content=prompts.situation_system_prompt(activity, problem, setting))]
+
+        response = await openai_client.responses.parse(
+            model=os.getenv("OPENAI_MODEL"),
+            input=messages,
+            text_format=Situation,
+            temperature=0.5,
+        )
+
+        return response.output_parsed
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# PUT ---------------------------------------------------------------------------------------------------------------------------------------
+
+@router.put("/generate-situation")
 async def generate_situation(request: Request, target_word: TargetWord, supabase=Depends(get_user_client)):
     user = request.session.get('user')
 
@@ -23,9 +75,6 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
         raise HTTPException(status_code=401, detail="User not authenticated")
 
     try:
-        if request.session["user"]["target_word_id"] is not None:
-            raise HTTPException(status_code=400, detail="A practice session is already in progress. Please complete it before starting a new one.")
-
         response = await run_in_threadpool(lambda: supabase.rpc("update_user_ai_usage").execute())
 
         new_usage = response.data
@@ -33,53 +82,58 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
         if new_usage is None:
             raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day.")
 
-        result = await run_in_threadpool(lambda: supabase.table("word_bank")
+        result_word = await run_in_threadpool(lambda: supabase.table("word_bank")
                                                             .select("word_phrase, success_attempts, failed_attempts, avg_success_attempts, last_attempted_at")
                                                             .eq("word_id", target_word.word_id)
-                                                            .limit(1)
+                                                            .single()
                                                             .execute()
                                                         )
 
-        situation_constraints = None
 
-        if result.data:
+        random_situation_type = random.randint(1, 3)
+        random_constraint_id = 0
+        table_name = ""
+        constraint_type = ""
+        constraint_type_id_name = ""
 
-            random_situation_id = random.randint(1, 1_450_145)
+        if random_situation_type == 1:
+            random_constraint_id = random.randint(1, 137)
+            table_name = "activities"
+            constraint_type = "activity"
+            constraint_type_id_name = "activity_id"
 
-            situation_constraints = await run_in_threadpool(lambda: supabase 
-                        .table("context_combinations")
-                        .select("""
-                            activity_id,
-                            problem_id,
-                            setting_id,
-                            activities(activity),
-                            problems(problem),
-                            settings(setting)
-                        """) 
-                        .eq("combination_id", random_situation_id) 
+        elif random_situation_type == 2:
+            random_constraint_id = random.randint(1, 145)
+            table_name = "problems"
+            constraint_type = "problem"
+            constraint_type_id_name = "problem_id"
+
+        elif random_situation_type == 3:
+            random_constraint_id = random.randint(1, 73)
+            table_name = "settings"
+            constraint_type = "setting"
+            constraint_type_id_name = "setting_id"
+
+        situation = ""
+        new_target_word = ""
+
+        if result_word.data:
+
+            situation_constraint = await run_in_threadpool(lambda: supabase 
+                        .table(table_name)
+                        .select(constraint_type) 
+                        .eq(constraint_type_id_name, random_constraint_id) 
                         .single()
                         .execute())
 
-            new_target_word = result.data[0]["word_phrase"]
+            situation = situation_constraint.data[constraint_type]
 
-            request.session["user"]["target_word"] = new_target_word
-            return Situation(situation=request.session["user"]["target_word"], follow_up_question="")
-            request.session["user"]["target_word_id"] = target_word.word_id
-            request.session["user"]["situation"] = None
-            request.session["user"]["user_responses"] = 0
-            request.session["user"]["ai_responses"] = 0
-            request.session["user"]["success_attempts"] = result.data[0]["success_attempts"]
-            request.session["user"]["failed_attempts"] = result.data[0]["failed_attempts"]
-            request.session["user"]["avg_success_attempts"] = result.data[0]["avg_success_attempts"]
+            new_target_word = result_word.data["word_phrase"]
         else:
-            raise HTTPException(status_code=404, detail="No words found in the user's word bank")
+            raise HTTPException(status_code=404, detail="Target word not found in the user's word bank")
 
-        if situation_constraints.data:
-            activity = situation_constraints.data["activities"]["activity"]
-            problem = situation_constraints.data["problems"]["problem"]
-            setting = situation_constraints.data["settings"]["setting"]
-
-            messages = [AIMessage(role="system", content=prompts.situation_system_prompt(new_target_word, activity, problem, setting))]
+        if situation:
+            messages = [AIMessage(role="system", content=prompts.target_word_situation_system_prompt(new_target_word, constraint_type, situation))]
         else:
             raise HTTPException(status_code=404, detail="No situation constraints found for the given word")
 
@@ -89,7 +143,7 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
             text_format=Situation
         )
 
-        request.session["user"]["situation"] = response.output_parsed.situation
+        await run_in_threadpool(lambda: supabase.table("user_situation_tracker").update({"situation": response.output_parsed.situation_only, "target_word_id": target_word.word_id, "attempts": 0}).not_.is_("user_id", "null").execute())
 
         return response.output_parsed
 
@@ -98,7 +152,7 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
 
 
 
-@router.post("/validate-user-response")
+@router.put("/validate-user-response")
 async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depends(get_user_client)):
     user = request.session.get('user')
     
@@ -106,36 +160,35 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
         raise HTTPException(status_code=401, detail="User not authenticated")
 
     try:
+        trimmed_user_response = userPrompt.user_response.strip()
+
+        if len(trimmed_user_response) == 0 or len(trimmed_user_response) > 1000:
+            raise HTTPException(status_code=400, detail="User response cannot be empty or greater than 1000 characters when continuing a practice session.")
 
         user_ai_usage = await run_in_threadpool(lambda: supabase.table("users").select("ai_usage_tracker").execute())
 
-        if user_ai_usage.data and user_ai_usage.data[0]["ai_usage_tracker"] >= 50:
+        if user_ai_usage.data and user_ai_usage.data[0]["ai_usage_tracker"] >= 30:
             raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day.")
 
-        trimmed_user_response = userPrompt.user_response.strip()
+        cur_situation = await run_in_threadpool(lambda: supabase.rpc("increment_situation_attempts").execute())
 
-        if request.session["user"]["ai_responses"] >= 3 or request.session["user"]["user_responses"] >= 3:
-            raise HTTPException(status_code=400, detail="The practice session has ended. Please start a new session.")
+        target_word = None
+        situation = None
 
-        target_word = request.session["user"]["target_word"]
-
-        return Evaluation(correct=False, feedback=str(dict(request.session.items())), example=None, answer_explanation=None)
-        messages = []
-
-        if target_word is not None:
-            if len(trimmed_user_response) == 0 or len(trimmed_user_response) > 1000:
-                raise HTTPException(status_code=400, detail="User response cannot be empty or greater than 1000 characters when continuing a practice session.")
-
-            request.session["user"]["user_responses"] += 1
+        if cur_situation.data:
+            target_word = cur_situation.data[0]["word_bank"]["word_phrase"]
+            situation = cur_situation.data[0]["situation"]
 
         else:
-            raise HTTPException(status_code=400, detail="No target word found in the session. Please start a new practice session.")
+            raise HTTPException(status_code=400, detail="No active practice session found. Please start a new session.")
+
+        messages = []
 
         response = None
 
-        is_reveal = request.session["user"]["user_responses"] >= 3
+        is_reveal = cur_situation.data[0]["attempts"] >= 3
 
-        messages.append(AIMessage(role="system", content=prompts.evaluation_prompt(target_word, request.session["user"]["situation"], is_reveal)))
+        messages.append(AIMessage(role="system", content=prompts.evaluation_prompt(target_word, situation, is_reveal)))
         messages.append(AIMessage(role="user", content=trimmed_user_response))
 
         response = await openai_client.responses.parse(
@@ -146,38 +199,35 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
         
         response = response.output_parsed
 
-        request.session["user"]["ai_responses"] += 1
-
+        cur_word_data = await run_in_threadpool(lambda: supabase.table("word_bank").select("success_attempts, failed_attempts, avg_success_attempts").eq("word_id", cur_situation.data[0]["target_word_id"]).single().execute())
+        
         if response.correct == True:
-            request.session["user"]["is_correct"] = True
-            request.session["user"]["success_attempts"] += 1
-            request.session["user"]["avg_success_attempts"] = (request.session["user"]["avg_success_attempts"] + request.session["user"]["user_responses"]) / 2
-
             await run_in_threadpool(lambda: supabase.table("word_bank")
                                         .update({
-                                            "success_attempts": request.session["user"]["success_attempts"],
-                                            "avg_success_attempts": request.session["user"]["avg_success_attempts"],
+                                            "success_attempts": cur_word_data.data["success_attempts"] + 1,
+                                            "avg_success_attempts": (cur_word_data.data["avg_success_attempts"] + cur_situation.data[0]["attempts"]) / 2,
                                             "last_attempted_at": datetime.now(timezone.utc).isoformat()
                                         })
-                                        .eq("word_id", request.session["user"]["target_word_id"])
+                                        .eq("word_id", cur_situation.data[0]["target_word_id"])
                                         .execute()
                                     )
+
+            await run_in_threadpool(lambda: supabase.table("user_situation_tracker")
+                                        .update({"situation": None, "target_word_id": None})
+                                        .not_.is_("user_id", "null")
+                                        .execute()
+                                    )
+
         else:
-            request.session["user"]["failed_attempts"] += 1
-
             await run_in_threadpool(lambda: supabase.table("word_bank")
                                         .update({
-                                            "failed_attempts": request.session["user"]["failed_attempts"],
+                                            "failed_attempts": cur_word_data.data["failed_attempts"] + 1,
                                             "last_attempted_at": datetime.now(timezone.utc).isoformat()
                                         })
-                                        .eq("word_id", request.session["user"]["target_word_id"])
+                                        .eq("word_id", cur_situation.data[0]["target_word_id"])
                                         .execute()
                                     )
-
-        if response.correct == True or request.session["user"]["ai_responses"] >= 3 or request.session["user"]["user_responses"] >= 3:
-            request.session["user"]["target_word_id"] = None
-            request.session["user"]["target_word"] = None
-
+        
 
         return response
     
