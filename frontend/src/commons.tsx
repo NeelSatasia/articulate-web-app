@@ -48,14 +48,8 @@ export interface WordPhrase {
     last_attempted_at: string | null
 }
 
-export interface ChatMessage {
-    role: "system" | "user" | "assistant"
-    content: string | Situation | Evaluation
-}
-
 export interface Situation {
     situation: string
-    follow_up_question: string
 }
 
 export interface Evaluation {
@@ -63,6 +57,11 @@ export interface Evaluation {
     feedback?: string
     example?: string
     answer_explanation?: string
+}
+
+export interface ChatMessage {
+    role: "system" | "user" | "assistant"
+    content: string | Situation | Evaluation
 }
 
 export interface ErrorAlertDialogProps {
@@ -106,5 +105,5 @@ export const ErrorAlertDialog = ({
 }
 
 export const WhiteLabelBlock = ({value} : {value: string}) => {
-    return <span className="font-semibold bg-white rounded-md p-1 text-secondary">{value}</span>
+    return <span className="font-semibold bg-white px-1 rounded-md text-secondary w-fit">{value}</span>
 }
