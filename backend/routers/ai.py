@@ -143,7 +143,7 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
             text_format=Situation
         )
 
-        await run_in_threadpool(lambda: supabase.table("users").update({"situation": response.output_parsed.situation_only, "target_word_id": target_word.word_id, "attempts": 0}).not_.is_("user_id", "null").execute())
+        await run_in_threadpool(lambda: supabase.table("users").update({"situation": response.output_parsed.situation, "target_word_id": target_word.word_id, "attempts": 0}).not_.is_("user_id", "null").execute())
 
         return response.output_parsed
 
