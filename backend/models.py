@@ -46,4 +46,3 @@ class Evaluation(BaseModel):
 
 class Situation(BaseModel):
     situation: str
-    follow_up_question: str
