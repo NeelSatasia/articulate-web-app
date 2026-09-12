@@ -227,12 +227,6 @@ const Playground = () => {
         isPracticing.current = true
         resetUserResponsesAttempts()
 
-        try {
-            await api.put("/auth/target-word-reset")
-        } catch (err) {
-            console.error("Error resetting target word info in the cookie session", err)
-        }
-
         if (words && words.length > 0) {
             await generateModelResponse()
         } else {
