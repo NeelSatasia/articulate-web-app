@@ -1,0 +1,1 @@
+ALTER TABLE user_situation_tracker ADD CONSTRAINT fk_target_word_id FOREIGN KEY (target_word_id) REFERENCES word_bank(word_id);
