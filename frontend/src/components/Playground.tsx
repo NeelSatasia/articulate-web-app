@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import api from "../api"
-import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, trueStr, type ChatMessage, type Evaluation, type Situation, type WordPhrase, type ErrorAlert, AuthError, falseStr, WhiteLabelBlock } from "../commons"
+import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, trueStr, type ChatMessage, type Evaluation, type WordPhrase, type ErrorAlert, AuthError, falseStr, WhiteLabelBlock, type Situation } from "../commons"
 import Loading from "./Loading"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
@@ -73,7 +73,7 @@ const Playground = () => {
         try {
 
             if (messages.current.length == 0) {
-                const resp = await api.post("/ai/generate-situation", {
+                const resp = await api.put("/ai/generate-situation", {
                     word_id: words[currentIndex].word_id}, 
                     {
                     headers: {
@@ -96,7 +96,7 @@ const Playground = () => {
             } 
             
             else {
-                const resp = await api.post("/ai/validate-user-response", {
+                const resp = await api.put("/ai/validate-user-response", {
                     user_response: userResponse.trim()
                 },
                 {
@@ -168,37 +168,47 @@ const Playground = () => {
     const renderAssistantMessage = (messageContent: Situation | Evaluation) => {
         if (isSituation(messageContent)) {
             return (
-                <div className="space-y-1">
+                <>
                     {messageContent.situation && (
-                        <p><WhiteLabelBlock value="Situation" /> {messageContent.situation}</p>
+                        <div className="flex flex-col gap-y-1 leading-normal">
+                            <WhiteLabelBlock value="Situation" />
+                            <p>{messageContent.situation}</p>
+                        </div>
                     )}
-                    {messageContent.follow_up_question && (
-                        <p><WhiteLabelBlock value="Question" /> {messageContent.follow_up_question}</p>
-                    )}
-                </div>
+                </>
             )
         }
 
         if (isEvaluation(messageContent)) {
             if (messageContent.correct) {
                 return (
-                    <div className="space-y-1">
+                    <div>
                         <p className="font-semibold text-green-600">Correct</p>
                     </div>
                 )
             }
 
             return (
-                <div className="space-y-2">
+                <div className="flex flex-col gap-y-3 leading-normal">
                     <p className="font-semibold text-red-400">Incorrect</p>
+
                     {messageContent.feedback && (
-                        <p><WhiteLabelBlock value="Feedback" /> {messageContent.feedback}</p>
+                        <div className="flex flex-col gap-y-1">
+                            <WhiteLabelBlock value="Feedback" />
+                            <p>{messageContent.feedback}</p>
+                        </div>
                     )}
                     {messageContent.example && (
-                        <p><WhiteLabelBlock value="Example" /> {messageContent.example}</p>
+                        <div className="flex flex-col gap-y-1">
+                            <WhiteLabelBlock value="Example" />
+                            <p>{messageContent.example}</p>
+                        </div>
                     )}
                     {messageContent.answer_explanation && (
-                        <p><WhiteLabelBlock value="Explanation" /> {messageContent.answer_explanation}</p>
+                        <div className="flex flex-col gap-y-1">
+                            <WhiteLabelBlock value="Explanation" />
+                            <p>{messageContent.answer_explanation}</p>
+                        </div>
                     )}
                 </div>
             )
