@@ -6,7 +6,7 @@ import "/src/WordBank.css"
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Checkbox } from './ui/checkbox'
-import { ErrorAlertDialog, falseStr, initAuthInLocalStorage, getErrorDetail, AuthError, isAuth, loadingStr, savingStr, trueStr, type Category, type WordPhrase, type ErrorAlert } from '../commons'
+import { ErrorAlertDialog, falseStr, initAuthInLocalStorage, getErrorDetail, AuthError, isAuth, loadingStr, savingStr, trueStr, type Category, type WordPhrase, type ErrorAlert, RateLimitError } from '../commons'
 import Loading from './Loading'
 import { Navigate } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
@@ -374,17 +374,17 @@ const WordBank = () => {
                     await api.delete('/wordbank/categories', {data: jsonData})
 
                 } catch (err: any) {
-                    if (err?.response?.data?.detail !== undefined) {
-                        const statusCode = Number(err.response.data.detail.split(":")[0])
+                    const statusCode = err?.response?.status
 
-                        if (statusCode === 401) {
-                            localStorage.setItem(isAuth, falseStr)
-                            setError(AuthError)
-                        } 
-                        
-                        else {
-                            setError({title: "Error Deleting Requested Categories", detail: getErrorDetail(err)})
-                        }
+                    if (statusCode === 401) {
+                        localStorage.setItem(isAuth, falseStr)
+                        setError(AuthError)
+                    } 
+                    else if (statusCode === 429) {
+                        setError(RateLimitError)
+                    }
+                    else {
+                        setError({title: "Error Deleting Requested Categories", detail: getErrorDetail(err)})
                     }
                 }
             }
@@ -408,17 +408,17 @@ const WordBank = () => {
                     await api.delete('/wordbank/word-phrases', {data: jsonData})
 
                 } catch (err: any) {
-                    if (err?.response?.data?.detail !== undefined) {
-                        const statusCode = Number(err.response.data.detail.split(":")[0])
+                    const statusCode = err?.response?.status
 
-                        if (statusCode === 401) {
-                            localStorage.setItem(isAuth, falseStr)
-                            setError(AuthError)
-                        } 
-                        
-                        else {
-                            setError({title: "Error Deleting Requested Words", detail: getErrorDetail(err)})
-                        }
+                    if (statusCode === 401) {
+                        localStorage.setItem(isAuth, falseStr)
+                        setError(AuthError)
+                    } 
+                    else if (statusCode === 429) {
+                        setError(RateLimitError)
+                    }
+                    else {
+                        setError({title: "Error Deleting Requested Words", detail: getErrorDetail(err)})
                     }
                 }
             }
@@ -444,17 +444,17 @@ const WordBank = () => {
 
                         updateAccordionDefaults()
                     } catch (err: any) {
-                        if (err?.response?.data?.detail !== undefined) {
-                            const statusCode = Number(err.response.data.detail.split(":")[0])
+                        const statusCode = err?.response?.status
 
-                            if (statusCode === 401) {
-                                localStorage.setItem(isAuth, falseStr)
-                                setError(AuthError)
-                            } 
-                            
-                            else {
-                                setError({title: "Error Modifying Requested Categories", detail: getErrorDetail(err)})
-                            }
+                        if (statusCode === 401) {
+                            localStorage.setItem(isAuth, falseStr)
+                            setError(AuthError)
+                        } 
+                        else if (statusCode === 429) {
+                            setError(RateLimitError)
+                        }
+                        else {
+                            setError({title: "Error Modifying Requested Categories", detail: getErrorDetail(err)})
                         }
                     }
                 }
@@ -484,17 +484,17 @@ const WordBank = () => {
                     })
 
                 } catch (err: any) {
-                    if (err?.response?.data?.detail !== undefined) {
-                        const statusCode = Number(err.response.data.detail.split(":")[0])
+                    const statusCode = err?.response?.status
 
-                        if (statusCode === 401) {
-                            localStorage.setItem(isAuth, falseStr)
-                            setError(AuthError)
-                        } 
-                        
-                        else {
-                            setError({title: "Error Adding New Categories", detail: getErrorDetail(err)})
-                        }
+                    if (statusCode === 401) {
+                        localStorage.setItem(isAuth, falseStr)
+                        setError(AuthError)
+                    } 
+                    else if (statusCode === 429) {
+                        setError(RateLimitError)
+                    }
+                    else {
+                        setError({title: "Error Adding New Categories", detail: getErrorDetail(err)})
                     }
                 }
             }
@@ -519,17 +519,17 @@ const WordBank = () => {
                 } 
                 
                 catch (err: any) {
-                    if (err?.response?.data?.detail !== undefined) {
-                        const statusCode = Number(err.response.data.detail.split(":")[0])
+                    const statusCode = err?.response?.status
 
-                        if (statusCode === 401) {
-                            localStorage.setItem(isAuth, falseStr)
-                            setError(AuthError)
-                        } 
-                        
-                        else {
-                            setError({title: "Error Adding New Words", detail: getErrorDetail(err)})
-                        }
+                    if (statusCode === 401) {
+                        localStorage.setItem(isAuth, falseStr)
+                        setError(AuthError)
+                    } 
+                    else if (statusCode === 429) {
+                        setError(RateLimitError)
+                    }
+                    else {
+                        setError({title: "Error Adding New Words", detail: getErrorDetail(err)})
                     }
                 }
             }

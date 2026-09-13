@@ -8,6 +8,8 @@ from models import AIMessage, UserRequest, Evaluation, Situation, TargetWord
 import prompts
 from datetime import datetime, timezone
 import random
+from limiter import limiter
+from redis_client import get_redis
 
 load_dotenv()
 
@@ -19,11 +21,8 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 # GET ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.get("/generate-situation")
-async def generate_situation(request: Request, supabase=Depends(get_user_client)):
-    user = request.session.get("user")
-
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
+@limiter.limit("2/minute")
+async def generate_situation(request: Request, supabase=Depends(get_user_client), redis=Depends(get_redis)):
 
     try:
         response = await run_in_threadpool(lambda: supabase.rpc("update_user_ai_usage").execute())
@@ -68,11 +67,10 @@ async def generate_situation(request: Request, supabase=Depends(get_user_client)
 # PUT ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.put("/generate-situation")
-async def generate_situation(request: Request, target_word: TargetWord, supabase=Depends(get_user_client)):
-    user = request.session.get('user')
+@limiter.limit("3/minute")
+async def generate_situation(request: Request, target_word: TargetWord, supabase=Depends(get_user_client), redis=Depends(get_redis)):
 
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
+    user_id = request.session.get("user")["user_id"]
 
     try:
         response = await run_in_threadpool(lambda: supabase.rpc("update_user_ai_usage").execute())
@@ -143,7 +141,15 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
             text_format=Situation
         )
 
-        await run_in_threadpool(lambda: supabase.table("users").update({"situation": response.output_parsed.situation, "target_word_id": target_word.word_id, "attempts": 0}).not_.is_("user_id", "null").execute())
+        await redis.mset({
+            f"user:{user_id}:situation": response.output_parsed.situation,
+            f"user:{user_id}:target_word_id": target_word.word_id,
+            f"user:{user_id}:attempts": 0,
+            f"user:{user_id}:target_word": result_word.data['word_phrase'],
+            f"user:{user_id}:success_attempts": result_word.data['success_attempts'],
+            f"user:{user_id}:failed_attempts": result_word.data['failed_attempts'],
+            f"user:{user_id}:avg_success_attempts": result_word.data['avg_success_attempts']
+        })
 
         return response.output_parsed
 
@@ -153,11 +159,10 @@ async def generate_situation(request: Request, target_word: TargetWord, supabase
 
 
 @router.put("/validate-user-response")
-async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depends(get_user_client)):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
+@limiter.limit("5/minute")
+async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depends(get_user_client), redis=Depends(get_redis)):
+
+    user_id = request.session.get("user")["user_id"]
 
     try:
         trimmed_user_response = userPrompt.user_response.strip()
@@ -170,23 +175,36 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
         if user_ai_usage.data and user_ai_usage.data[0]["ai_usage_tracker"] >= 30:
             raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day.")
 
-        cur_situation = await run_in_threadpool(lambda: supabase.rpc("increment_situation_attempts").execute())
+        user_practice_session_info = await redis.mget(
+                                                    f"user:{user_id}:situation",
+                                                    f"user:{user_id}:target_word_id",
+                                                    f"user:{user_id}:attempts",
+                                                    f"user:{user_id}:target_word",
+                                                    f"user:{user_id}:success_attempts",
+                                                    f"user:{user_id}:failed_attempts",
+                                                    f"user:{user_id}:avg_success_attempts")
 
-        target_word = None
-        situation = None
 
-        if cur_situation.data:
-            target_word = cur_situation.data[0]["word_bank"]["word_phrase"]
-            situation = cur_situation.data[0]["situation"]
+        target_word = user_practice_session_info[3]
+        situation = user_practice_session_info[0]
+        attempts = user_practice_session_info[2]
+
+        if not target_word or not situation or not attempts:
+            raise HTTPException(status_code=400, detail="No active practice session found. Please start a new session.")
+
+        attempts = int(attempts)
+
+        if attempts + 1 > 3:
+            raise HTTPException(status_code=400, detail="Maximum attempts reached for this practice session. Please start a new session.")
 
         else:
-            raise HTTPException(status_code=400, detail="No active practice session found. Please start a new session.")
+            attempts += 1
+            await redis.set(f"user:{user_id}:attempts", attempts)
+
 
         messages = []
 
-        response = None
-
-        is_reveal = cur_situation.data[0]["attempts"] >= 3
+        is_reveal = attempts >= 3
 
         messages.append(AIMessage(role="system", content=prompts.evaluation_prompt(target_word, situation, is_reveal)))
         messages.append(AIMessage(role="user", content=trimmed_user_response))
@@ -198,36 +216,37 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
         )
         
         response = response.output_parsed
-
-        cur_word_data = await run_in_threadpool(lambda: supabase.table("word_bank").select("success_attempts, failed_attempts, avg_success_attempts").eq("word_id", cur_situation.data[0]["target_word_id"]).single().execute())
         
         if response.correct == True:
             await run_in_threadpool(lambda: supabase.table("word_bank")
                                         .update({
-                                            "success_attempts": cur_word_data.data["success_attempts"] + 1,
-                                            "avg_success_attempts": (cur_word_data.data["avg_success_attempts"] + cur_situation.data[0]["attempts"]) / 2,
+                                            "success_attempts": int(user_practice_session_info[4]) + 1,
+                                            "avg_success_attempts": (int(user_practice_session_info[6]) + attempts) / 2,
                                             "last_attempted_at": datetime.now(timezone.utc).isoformat()
                                         })
-                                        .eq("word_id", cur_situation.data[0]["target_word_id"])
-                                        .execute()
-                                    )
-
-            await run_in_threadpool(lambda: supabase.table("users")
-                                        .update({"situation": None, "target_word_id": None})
-                                        .not_.is_("user_id", "null")
+                                        .eq("word_id", user_practice_session_info[1])
                                         .execute()
                                     )
 
         else:
             await run_in_threadpool(lambda: supabase.table("word_bank")
                                         .update({
-                                            "failed_attempts": cur_word_data.data["failed_attempts"] + 1,
+                                            "failed_attempts": int(user_practice_session_info[5]) + 1,
                                             "last_attempted_at": datetime.now(timezone.utc).isoformat()
                                         })
-                                        .eq("word_id", cur_situation.data[0]["target_word_id"])
+                                        .eq("word_id", int(user_practice_session_info[1]))
                                         .execute()
                                     )
-        
+
+        if response.correct or is_reveal:
+            await redis.unlink(
+                            f"user:{user_id}:situation",
+                            f"user:{user_id}:target_word_id",
+                            f"user:{user_id}:attempts",
+                            f"user:{user_id}:target_word",
+                            f"user:{user_id}:success_attempts",
+                            f"user:{user_id}:failed_attempts",
+                            f"user:{user_id}:avg_success_attempts")
 
         return response
     

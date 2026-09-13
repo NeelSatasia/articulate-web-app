@@ -81,6 +81,11 @@ export const AuthError : ErrorAlert = {
     detail: "Your session has expired. Please log in again."
 }
 
+export const RateLimitError : ErrorAlert = {
+    title: "Rate Limit Exceeded",
+    detail: "You are making requests too quickly. Please wait a moment and try again."
+}
+
 export const ErrorAlertDialog = ({
     open,
     errorDetail,

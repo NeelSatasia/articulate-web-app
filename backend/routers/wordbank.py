@@ -2,18 +2,16 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import Dict, List
 from fastapi.concurrency import run_in_threadpool
 from userclient import get_user_client
+from limiter import limiter
+
 
 router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
 
 # GET ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.get("")
+@limiter.limit("5/minute")
 async def user_word_bank(request: Request, supabase=Depends(get_user_client)):
-    user = request.session.get('user')
-
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
-    
     try:
         result = await run_in_threadpool(lambda: supabase.table("word_bank").select("word_id, word_category_id, word_phrase, success_attempts, failed_attempts, avg_success_attempts, last_attempted_at").order("word_category_id").execute())
 
@@ -24,12 +22,8 @@ async def user_word_bank(request: Request, supabase=Depends(get_user_client)):
 
    
 @router.get("/categories")
+@limiter.limit("5/minute")
 async def user_word_categories(request: Request, supabase=Depends(get_user_client)):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
-
     try:
         result = await run_in_threadpool(lambda: supabase.table("word_category").select("word_category_id, word_category").execute())
 
@@ -41,11 +35,9 @@ async def user_word_categories(request: Request, supabase=Depends(get_user_clien
 # POST ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.post("/categories")
+@limiter.limit("5/minute")
 async def new_user_word_categories(new_word_categories: List[str], request: Request, supabase=Depends(get_user_client)):
     user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
     
     try:
         for category in new_word_categories:
@@ -66,11 +58,9 @@ async def new_user_word_categories(new_word_categories: List[str], request: Requ
 
 
 @router.post("/word-phrases")
+@limiter.limit("5/minute")
 async def new_user_word_phrases(new_word_phrases: Dict[int, List[str]], request: Request, supabase=Depends(get_user_client)):
     user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
 
     try:
         records = []
@@ -105,12 +95,8 @@ async def new_user_word_phrases(new_word_phrases: Dict[int, List[str]], request:
 # PUT ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.put("/categories")
+@limiter.limit("5/minute")
 async def edit_word_categories(request: Request, modified_data: Dict[int, str], supabase=Depends(get_user_client)):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
-    
     try:
         category_ids = []
         updated_category_names = []
@@ -135,12 +121,8 @@ async def edit_word_categories(request: Request, modified_data: Dict[int, str], 
 # DELETE ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.delete("/word-phrases")
+@limiter.limit("5/minute")
 async def del_word_phrases(delete_data: List[int], request: Request, supabase=Depends(get_user_client)):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
-    
     try:
         await run_in_threadpool(lambda: supabase.table("word_bank").delete().in_("word_id", delete_data).execute())
     
@@ -149,12 +131,8 @@ async def del_word_phrases(delete_data: List[int], request: Request, supabase=De
     
     
 @router.delete("/categories")
+@limiter.limit("5/minute")
 async def del_word_categories(word_category_ids: List[int], request: Request, supabase=Depends(get_user_client)):
-    user = request.session.get('user')
-    
-    if not user:
-        raise HTTPException(status_code=401, detail="User not authenticated")
-    
     try:
         await run_in_threadpool(lambda: supabase.table("word_category").delete().in_("word_category_id", word_category_ids).execute())
 

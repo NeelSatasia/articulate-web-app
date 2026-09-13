@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import api from "../api"
-import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, trueStr, type ChatMessage, type Evaluation, type WordPhrase, type ErrorAlert, AuthError, falseStr, WhiteLabelBlock, type Situation } from "../commons"
+import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, trueStr, type ChatMessage, type Evaluation, type WordPhrase, type ErrorAlert, AuthError, falseStr, WhiteLabelBlock, type Situation, RateLimitError } from "../commons"
 import Loading from "./Loading"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
@@ -129,17 +129,17 @@ const Playground = () => {
         } 
         
         catch (err: any) {
-            if (err?.response?.data?.detail !== undefined) {
-                const statusCode = Number(err.response.data.detail.split(":")[0])
+            const statusCode = err?.response?.status
 
-                if (statusCode === 401) {
-                    localStorage.setItem(isAuth, falseStr)
-                    setError(AuthError)
-                } 
-                
-                else {
-                    setError({title: "Unable to continue the practice", detail: getErrorDetail(err)})
-                }
+            if (statusCode === 401) {
+                localStorage.setItem(isAuth, falseStr)
+                setError(AuthError)
+            }
+            else if (statusCode === 429) {
+                setError(RateLimitError)
+            } 
+            else {
+                setError({title: "Unable to continue the practice", detail: getErrorDetail(err)})
             }
         }
         

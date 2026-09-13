@@ -5,13 +5,28 @@ from starlette.middleware.sessions import SessionMiddleware
 from routers import user, wordbank, auth, ai
 from dotenv import load_dotenv
 import os
-
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from contextlib import asynccontextmanager
+import redis.asyncio as redis
+from limiter import limiter
 
 load_dotenv()
 
 SECRET_SESSION_KEY = os.getenv("SECRET_SESSION_KEY")
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.redis = redis.from_url(
+        os.getenv("REDIS_URL"),
+        decode_responses=True,
+    )
+
+    yield
+
+    await app.state.redis.aclose()
+
+app = FastAPI(lifespan=lifespan)
 
 origins = [
     os.getenv("FRONTEND_URL")
@@ -30,6 +45,13 @@ app.add_middleware(
     secret_key=SECRET_SESSION_KEY,
     https_only=True,
     same_site="none",
+)
+
+app.state.limiter = limiter
+
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler,
 )
 
 #routers

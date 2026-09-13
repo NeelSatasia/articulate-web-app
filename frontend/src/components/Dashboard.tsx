@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 import api from "../api"
-import {AuthError, ErrorAlertDialog, falseStr, getErrorDetail, isAuth, loadingStr, trueStr, type ErrorAlert, type WordPhrase} from "../commons"
+import {AuthError, ErrorAlertDialog, falseStr, getErrorDetail, isAuth, loadingStr, RateLimitError, trueStr, type ErrorAlert, type WordPhrase} from "../commons"
 import Loading from "./Loading"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion"
 import { Button } from "./ui/button"
@@ -23,17 +23,18 @@ const Dashboard = () => {
                 localStorage.setItem(isAuth, trueStr)
                 setWords(resp.data)
             } catch (err: any) {
-                if (err?.response?.data?.detail !== undefined) {
-                    const statusCode = Number(err.response.data.detail.split(":")[0])
+                const statusCode = err?.response?.status
+                console.log(statusCode)
 
-                    if (statusCode === 401) {
-                        localStorage.setItem(isAuth, falseStr)
-                        setError(AuthError)
-                    } 
-                    
-                    else {
-                        setError({title: "Error Fetching Word Bank", detail: getErrorDetail(err)})
-                    }
+                if (statusCode === 401) {
+                    localStorage.setItem(isAuth, falseStr)
+                    setError(AuthError)
+                } 
+                else if (statusCode === 429) {
+                    setError(RateLimitError)
+                }
+                else {
+                    setError({title: "Error Fetching Word Bank", detail: getErrorDetail(err)})
                 }
             } finally {
                 setLoading(false)

@@ -16,8 +16,6 @@ async def get_user_client(request: Request) -> Client:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     token = user_session.get("access_token")
-    refresh_token = user_session.get("refresh_token")
-    expires_at = user_session.get("expires_at", 0)
     
     if not token:
         raise HTTPException(status_code=401, detail="No access token found")
