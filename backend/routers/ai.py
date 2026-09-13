@@ -221,7 +221,7 @@ async def generate_text(request: Request, userPrompt: UserRequest, supabase=Depe
             await run_in_threadpool(lambda: supabase.table("word_bank")
                                         .update({
                                             "success_attempts": int(user_practice_session_info[4]) + 1,
-                                            "avg_success_attempts": (int(user_practice_session_info[6]) + attempts) / 2,
+                                            "avg_success_attempts": (float(user_practice_session_info[6]) + attempts) / 2,
                                             "last_attempted_at": datetime.now(timezone.utc).isoformat()
                                         })
                                         .eq("word_id", user_practice_session_info[1])
