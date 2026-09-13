@@ -330,30 +330,35 @@ const WordBank = () => {
 
         if (editMode) {
 
-            let is_valid = true
+            if (categories.current.size + keysOfNewCategories.current.size - deleteExistingCategories.current.size > 15) {
+                setError({title: "Number Of Categories Exceeded", detail: "You can only have a maximum of 15 categories in your word bank."})
+                return
+            }
+
+            if (Array.from(newWordPhrases.current.values()).length + Array.from(wordBank.current.values()).reduce((sum, innerMap) => sum + innerMap.size, 0) - Array.from(deleteExistingWordPhrases.current.values()).reduce((sum, currentSet) => sum + currentSet.size, 0) > 100) {
+                setError({title: "Number Of Words Exceeded", detail: "You can only have a maximum of 100 words in your word bank."})
+                return
+            }
 
             for (const [_, categoryName] of modifyExistingCategories.current) {
                 if (categoryName.trim().length == 0 || categoryName.trim().length > 30) {
-                    is_valid = false
                     setError({title: "Invalid Input", detail: "Category name cannot be empty or have more than 30 characters long.."})
                     return
                 }
             }
 
-            if (is_valid) {
-                for (const [_, wordPhrases] of newWordPhrases.current) {
-                    for (const wordPhrase of wordPhrases) {
-                        for (const char of wordPhrase) {
-                            if (!/^[a-zA-Z]+$/.test(char)) {
-                                setError({title: "Invalid Input", detail: "Words must contain only alphabetic characters."})
-                                return
-                            }
-                        }
-
-                        if (wordPhrase.trim().length <= 3 || wordPhrase.trim().length > 15) {
-                            setError({title: "Invalid Input", detail: "Words must be between 4 to 15 characters long."})
+            for (const [_, wordPhrases] of newWordPhrases.current) {
+                for (const wordPhrase of wordPhrases) {
+                    for (const char of wordPhrase) {
+                        if (!/^[a-zA-Z]+$/.test(char)) {
+                            setError({title: "Invalid Input", detail: "Words must contain only alphabetic characters."})
                             return
                         }
+                    }
+
+                    if (wordPhrase.trim().length <= 3 || wordPhrase.trim().length > 15) {
+                        setError({title: "Invalid Input", detail: "Words must be between 4 to 15 characters long."})
+                        return
                     }
                 }
             }

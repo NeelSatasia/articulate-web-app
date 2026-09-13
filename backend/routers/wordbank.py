@@ -45,6 +45,11 @@ async def new_user_word_categories(new_word_categories: List[str], request: Requ
 
             if len(category) == 0 or len(category) > 30:
                 raise HTTPException(status_code=400, detail=f"A category name cannot be empty or have more than 30 characters long.")
+
+        existing_categories = await run_in_threadpool(lambda: supabase.table("word_category").select("word_category_id").execute())
+        
+        if len(existing_categories.data) + len(new_word_categories) > 15:
+            raise HTTPException(status_code=400, detail=f"You can only have a maximum of 15 categories.")
         
         result = await run_in_threadpool(lambda: supabase.table("word_category").insert([
             {"user_id": user["user_id"], "word_category": category}
@@ -84,6 +89,11 @@ async def new_user_word_phrases(new_word_phrases: Dict[int, List[str]], request:
 
         if not records:
             return []
+
+        existing_words = await run_in_threadpool(lambda: supabase.table("word_bank").select("word_id").execute())
+
+        if len(existing_words.data) + len(records) > 100:
+            raise HTTPException(status_code=400, detail=f"You can only have a maximum of 100 words in your word bank.")
 
         result = await run_in_threadpool(lambda: supabase.table("word_bank").insert(records).execute())
 
