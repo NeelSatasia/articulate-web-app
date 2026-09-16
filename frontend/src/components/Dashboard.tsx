@@ -120,17 +120,21 @@ const Dashboard = () => {
                     <AccordionItem key={c.id} value={c.id}>
                         <AccordionTrigger className={`text-xl font-semibold ${c.color}`}>{c.title} ({c.words.length})</AccordionTrigger>
                         <AccordionContent>
-                            <div className="mb-3">
-                                <Button onClick={() => goToPlayground(c.id, c.words)}>Practice</Button>
-                            </div>
-                            <ul className="space-y-2">
-                                {c.words.map(w => (
-                                    <li key={w.word_id} className="flex justify-between items-center p-2 rounded border bg-white/5">
-                                        <span>{w.word_phrase}</span>
-                                        <small className="text-muted-foreground">{w.last_attempted_at ? `Last: ${new Date(w.last_attempted_at).toLocaleDateString()}` : "Not yet attempted"}</small>
-                                    </li>
-                                ))}
-                            </ul>
+                            {c.words.length > 0 &&
+                            <>
+                                <div className="mb-3">
+                                    <Button onClick={() => goToPlayground(c.id, c.words)}>Practice</Button>
+                                </div>
+                                <ul className="space-y-2">
+                                    {c.words.map(w => (
+                                        <li key={w.word_id} className="flex justify-between items-center p-2 rounded border bg-white/5">
+                                            <span>{w.word_phrase}</span>
+                                            <small className="text-muted-foreground">{w.last_attempted_at ? `Last: ${new Date(w.last_attempted_at).toLocaleDateString()}` : "Not yet attempted"}</small>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                            }
                         </AccordionContent>
                     </AccordionItem>
                 ))}
