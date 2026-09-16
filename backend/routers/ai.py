@@ -18,52 +18,6 @@ openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 router = APIRouter(prefix="/ai", tags=["AI"])
 
 
-# GET ---------------------------------------------------------------------------------------------------------------------------------------
-
-@router.get("/generate-situation")
-@limiter.limit("2/minute")
-async def generate_situation(request: Request, supabase=Depends(get_user_client), redis=Depends(get_redis)):
-
-    try:
-        response = await run_in_threadpool(lambda: supabase.rpc("update_user_ai_usage").execute())
-        
-        new_usage = response.data
-
-        if new_usage is None:
-            raise HTTPException(status_code=429, detail="AI usage limit reached. Please wait until the next day.")
-
-        random_situation_id = random.randint(1, 1_450_145)
-
-        situation_constraints = await run_in_threadpool(lambda: supabase 
-                                .table("context_combinations")
-                                .select("""
-                                    activities(activity),
-                                    problems(problem),
-                                    settings(setting)
-                                """) 
-                                .eq("combination_id", random_situation_id) 
-                                .single()
-                                .execute())
-
-        activity = situation_constraints.data["activities"]["activity"]
-        problem = situation_constraints.data["problems"]["problem"]
-        setting = situation_constraints.data["settings"]["setting"]
-
-        messages = [AIMessage(role="system", content=prompts.situation_system_prompt(activity, problem, setting))]
-
-        response = await openai_client.responses.parse(
-            model=os.getenv("OPENAI_MODEL"),
-            input=messages,
-            text_format=Situation,
-            temperature=0.5,
-        )
-
-        return response.output_parsed
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # PUT ---------------------------------------------------------------------------------------------------------------------------------------
 
 @router.put("/generate-situation")
