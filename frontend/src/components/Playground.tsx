@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom"
 import { useEffect, useRef, useState } from "react"
 import api from "../api"
-import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, trueStr, type ChatMessage, type Evaluation, type WordPhrase, type ErrorAlert, AuthError, falseStr, WhiteLabelBlock, type Situation, RateLimitError } from "../commons"
+import { ErrorAlertDialog, getErrorDetail, isAuth, loadingStr, trueStr, type ChatMessage, type Evaluation, type WordPhrase, type ErrorAlert, AuthError, falseStr, WhiteLabelBlock, type Situation, RateLimitError, AIUsageLimitError } from "../commons"
 import Loading from "./Loading"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
@@ -136,7 +136,11 @@ const Playground = () => {
                 setError(AuthError)
             }
             else if (statusCode === 429) {
-                setError(RateLimitError)
+                if (err.response.data.detail.includes("AI usage")) {
+                    setError(AIUsageLimitError)
+                } else {
+                    setError(RateLimitError)
+                }
             } 
             else {
                 setError({title: "Unable to continue the practice", detail: getErrorDetail(err)})
