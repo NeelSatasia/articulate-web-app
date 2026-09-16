@@ -86,6 +86,11 @@ export const RateLimitError : ErrorAlert = {
     detail: "You are making requests too quickly. Please wait a moment and try again."
 }
 
+export const AIUsageLimitError : ErrorAlert = {
+    title: "AI Usage Limit Exceeded",
+    detail: "You have exceeded your AI usage limit. Please wait until tomorrow."
+}
+
 export const ErrorAlertDialog = ({
     open,
     errorDetail,
