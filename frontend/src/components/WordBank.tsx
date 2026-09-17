@@ -575,7 +575,14 @@ const WordBank = () => {
         newWordPhrases.current.clear()
         deleteExistingWordPhrases.current.clear()
         deleteExistingCategories.current.clear()
+
+        for (const [_, newCategoryID] of keysOfNewCategories.current) {
+            categories.current.delete(newCategoryID)
+        }
+
         keysOfNewCategories.current.clear()
+        modifyExistingCategories.current.clear()
+
         setImportedWordPhrases([])
         setShowImportPanel(false)
         setImportError("")
