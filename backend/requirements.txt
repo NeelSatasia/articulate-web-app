@@ -8,3 +8,4 @@ openai
 itsdangerous
 redis
 slowapi
+pyspellchecker
