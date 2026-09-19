@@ -3,9 +3,12 @@ from typing import Dict, List
 from fastapi.concurrency import run_in_threadpool
 from userclient import get_user_client
 from limiter import limiter
+from spellchecker import SpellChecker
 
 
 router = APIRouter(prefix="/wordbank", tags=["Word Bank"])
+
+spell = SpellChecker()
 
 # GET ---------------------------------------------------------------------------------------------------------------------------------------
 
@@ -80,6 +83,9 @@ async def new_user_word_phrases(new_word_phrases: Dict[int, List[str]], request:
 
                 if not phrase.isalpha():
                     raise HTTPException(status_code=400, detail=f"Words must contain only alphabetic characters.")
+
+                if len(spell.unknown([phrase])) > 0:
+                    raise HTTPException(status_code=400, detail=f"'{phrase}' is either misspelled or not a valid English word.")
                 
                 records.append({
                     "user_id": user["user_id"],
