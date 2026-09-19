@@ -32,6 +32,8 @@ const WordBank = () => {
     const deleteExistingWordPhrases = useRef<Map<number, Set<number>>>(new Map())
 
     const [editMode, setEditMode] = useState<boolean>(false)
+    const clearEditData = useRef<boolean>(true)
+
     const [addNewCategoryMode, setAddNewCategoryMode] = useState<boolean>(false)
 
     const newCategory = useRef<string>("")
@@ -365,7 +367,7 @@ const WordBank = () => {
 
             setSaving(true)
 
-            if (localStorage.getItem(isAuth) === trueStr && deleteExistingCategories.current.size > 0) {
+            if (deleteExistingCategories.current.size > 0) {
                 deleteExistingCategories.current.forEach((categoryID: number) => {
                     wordBank.current.delete(categoryID)
                     categories.current.delete(categoryID)
@@ -377,8 +379,11 @@ const WordBank = () => {
 
                 try {
                     await api.delete('/wordbank/categories', {data: jsonData})
+                    clearEditData.current = true
 
                 } catch (err: any) {
+                    clearEditData.current = false
+
                     const statusCode = err?.response?.status
 
                     if (statusCode === 401) {
@@ -394,7 +399,7 @@ const WordBank = () => {
                 }
             }
 
-            if (localStorage.getItem(isAuth) === trueStr && deleteExistingWordPhrases.current.size > 0) {
+            if (deleteExistingWordPhrases.current.size > 0) {
                 deleteExistingWordPhrases.current.forEach((wordIDs: Set<number>, categoryID: number) => {
                     for (const wordID of wordIDs) {
                         wordBank.current.get(categoryID)?.delete(wordID)
@@ -411,8 +416,11 @@ const WordBank = () => {
 
                 try {
                     await api.delete('/wordbank/word-phrases', {data: jsonData})
+                    clearEditData.current = true
 
                 } catch (err: any) {
+                    clearEditData.current = false
+
                     const statusCode = err?.response?.status
 
                     if (statusCode === 401) {
@@ -428,7 +436,7 @@ const WordBank = () => {
                 }
             }
 
-            if (localStorage.getItem(isAuth) === trueStr && modifyExistingCategories.current.size > 0) {
+            if (modifyExistingCategories.current.size > 0) {
                 const jsonData: Record<number, string> = {}
 
                 let count = 0
@@ -448,7 +456,10 @@ const WordBank = () => {
                         await api.put('/wordbank/categories', jsonData)
 
                         updateAccordionDefaults()
+                        clearEditData.current = true
                     } catch (err: any) {
+                        clearEditData.current = false
+
                         const statusCode = err?.response?.status
 
                         if (statusCode === 401) {
@@ -465,7 +476,7 @@ const WordBank = () => {
                 }
             }
 
-            if (localStorage.getItem(isAuth) === trueStr && keysOfNewCategories.current.size > 0) {
+            if (keysOfNewCategories.current.size > 0) {
 
                 const newCategories = Array.from(keysOfNewCategories.current.keys())
 
@@ -486,9 +497,12 @@ const WordBank = () => {
                         wordBank.current.set(row.word_category_id, new Map<number, string>())
 
                         updateAccordionDefaults()
+                        clearEditData.current = true
                     })
 
                 } catch (err: any) {
+                    clearEditData.current = false
+
                     const statusCode = err?.response?.status
 
                     if (statusCode === 401) {
@@ -504,7 +518,7 @@ const WordBank = () => {
                 }
             }
             
-            if (localStorage.getItem(isAuth) === trueStr && newWordPhrases.current.size > 0) {
+            if (newWordPhrases.current.size > 0) {
 
                 const jsonData: Record<number, string[]> = {}
 
@@ -520,10 +534,12 @@ const WordBank = () => {
                     })
 
                     setManualRendersCount(prev => prev + 1)
-
+                    clearEditData.current = true
                 } 
                 
                 catch (err: any) {
+                    clearEditData.current = false
+                    
                     const statusCode = err?.response?.status
 
                     if (statusCode === 401) {
@@ -539,12 +555,17 @@ const WordBank = () => {
                 }
             }
             
-            clearTempData()
+            if (clearEditData.current) {
+                clearTempData()
+            }
+
             setSaving(false)
 
         }
-
-        setEditMode(!editMode)
+        
+        if (clearEditData.current) {
+            setEditMode(!editMode)
+        }
 
     }
 
@@ -555,6 +576,8 @@ const WordBank = () => {
         if (addNewCategoryMode) {
             setAddNewCategoryMode(false)
         }
+
+        clearEditData.current = true
 
         setEditMode(false)
     }
@@ -626,6 +649,7 @@ const WordBank = () => {
                                 className="max-w-sm"
                                 defaultValue={newCategory.current}
                                 onChange={(e) => newCategory.current = e.target.value}
+                                spellCheck={true}
                             />
                         )}
 
@@ -775,7 +799,11 @@ const WordBank = () => {
                                                     <TableCell key={"new-cell-1-" + index.toString()}>
                                                         <span id={"new-span-" + index.toString()} className="flex items-center gap-2">
                                                             <Button key={"del-new-word-phrase-" + categoryID.toString() + index.toString()} className="bg-red-500 hover:bg-red-400 text-primary" size="sm" onClick={() => deleteNewWordPhrase(categoryID, index)}><Trash2/></Button>
-                                                            <Input id={"new-word-phrase-" + categoryID.toString() + index.toString()} placeholder="Enter word here... " defaultValue={newWordPhrase} onChange={e => changeNewWordPhrase(categoryID, index, e.target.value)}/>
+                                                            <Input 
+                                                                id={"new-word-phrase-" + categoryID.toString() + index.toString()} 
+                                                                placeholder="Enter word here... " defaultValue={newWordPhrase} 
+                                                                onChange={e => changeNewWordPhrase(categoryID, index, e.target.value)}
+                                                                spellCheck={true}/>
                                                         </span>
                                                     </TableCell>
                                                 </TableRow>
