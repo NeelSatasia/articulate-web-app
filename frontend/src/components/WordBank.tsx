@@ -32,7 +32,6 @@ const WordBank = () => {
     const deleteExistingWordPhrases = useRef<Map<number, Set<number>>>(new Map())
 
     const [editMode, setEditMode] = useState<boolean>(false)
-    const clearEditData = useRef<boolean>(true)
 
     const [addNewCategoryMode, setAddNewCategoryMode] = useState<boolean>(false)
 
@@ -330,21 +329,20 @@ const WordBank = () => {
 
     const changeEditMode = async () => {
 
-        if (editMode) {
-
+        if (editMode) {            
             if (categories.current.size + keysOfNewCategories.current.size - deleteExistingCategories.current.size > 15) {
                 setError({title: "Number Of Categories Exceeded", detail: "You can only have a maximum of 15 categories in your word bank."})
                 return
             }
 
             if (Array.from(newWordPhrases.current.values()).length + Array.from(wordBank.current.values()).reduce((sum, innerMap) => sum + innerMap.size, 0) - Array.from(deleteExistingWordPhrases.current.values()).reduce((sum, currentSet) => sum + currentSet.size, 0) > 100) {
-                setError({title: "Number Of Words Exceeded", detail: "You can only have a maximum of 100 words in your word bank."})
+                setError({title: "Number Of Words Exceeded", detail: "You can only have a maximum of 100 words in your word bank"})
                 return
             }
-
+            
             for (const [_, categoryName] of modifyExistingCategories.current) {
                 if (categoryName.trim().length == 0 || categoryName.trim().length > 30) {
-                    setError({title: "Invalid Input", detail: "Category name cannot be empty or have more than 30 characters long.."})
+                    setError({title: "Invalid Input", detail: "Category name cannot be empty or have more than 30 characters."})
                     return
                 }
             }
@@ -368,22 +366,21 @@ const WordBank = () => {
             setSaving(true)
 
             if (deleteExistingCategories.current.size > 0) {
-                deleteExistingCategories.current.forEach((categoryID: number) => {
-                    wordBank.current.delete(categoryID)
-                    categories.current.delete(categoryID)
-                    deleteExistingWordPhrases.current.delete(categoryID)
-                    modifyExistingCategories.current.delete(categoryID)
-                })
-
                 const jsonData = Array.from(deleteExistingCategories.current)
 
                 try {
                     await api.delete('/wordbank/categories', {data: jsonData})
-                    clearEditData.current = true
+
+                    deleteExistingCategories.current.forEach((categoryID: number) => {
+                        wordBank.current.delete(categoryID)
+                        categories.current.delete(categoryID)
+                        deleteExistingWordPhrases.current.delete(categoryID)
+                        modifyExistingCategories.current.delete(categoryID)
+                    })
+
+                    deleteExistingCategories.current.clear()
 
                 } catch (err: any) {
-                    clearEditData.current = false
-
                     const statusCode = err?.response?.status
 
                     if (statusCode === 401) {
@@ -396,16 +393,13 @@ const WordBank = () => {
                     else {
                         setError({title: "Error Deleting Requested Categories", detail: getErrorDetail(err)})
                     }
+                    
+                    setSaving(false)
+                    return
                 }
             }
 
             if (deleteExistingWordPhrases.current.size > 0) {
-                deleteExistingWordPhrases.current.forEach((wordIDs: Set<number>, categoryID: number) => {
-                    for (const wordID of wordIDs) {
-                        wordBank.current.get(categoryID)?.delete(wordID)
-                    }
-                })
-
                 const jsonData: number[] = []
 
                 deleteExistingWordPhrases.current.forEach((wordIDs: Set<number>, _) => {
@@ -416,11 +410,16 @@ const WordBank = () => {
 
                 try {
                     await api.delete('/wordbank/word-phrases', {data: jsonData})
-                    clearEditData.current = true
+
+                    deleteExistingWordPhrases.current.forEach((wordIDs: Set<number>, categoryID: number) => {
+                        for (const wordID of wordIDs) {
+                            wordBank.current.get(categoryID)?.delete(wordID)
+                        }
+                    })
+
+                    deleteExistingWordPhrases.current.clear()
 
                 } catch (err: any) {
-                    clearEditData.current = false
-
                     const statusCode = err?.response?.status
 
                     if (statusCode === 401) {
@@ -433,6 +432,9 @@ const WordBank = () => {
                     else {
                         setError({title: "Error Deleting Requested Words", detail: getErrorDetail(err)})
                     }
+                    
+                    setSaving(false)
+                    return
                 }
             }
 
@@ -447,7 +449,6 @@ const WordBank = () => {
                     if (newCategoryName !== categories.current.get(categoryID)) {
                         count += 1
                         jsonData[categoryID] = newCategoryName
-                        categories.current.set(categoryID, newCategoryName)
                     }
                 })
                 
@@ -455,11 +456,15 @@ const WordBank = () => {
                     try {
                         await api.put('/wordbank/categories', jsonData)
 
-                        updateAccordionDefaults()
-                        clearEditData.current = true
-                    } catch (err: any) {
-                        clearEditData.current = false
+                        for (const [categoryID, newCategoryName] of Object.entries(jsonData)) {
+                            const catID = parseInt(categoryID, 10)
+                            categories.current.set(catID, newCategoryName)
+                        }
 
+                        modifyExistingCategories.current.clear()
+                        updateAccordionDefaults()
+
+                    } catch (err: any) {
                         const statusCode = err?.response?.status
 
                         if (statusCode === 401) {
@@ -472,6 +477,9 @@ const WordBank = () => {
                         else {
                             setError({title: "Error Modifying Requested Categories", detail: getErrorDetail(err)})
                         }
+                        
+                        setSaving(false)
+                        return
                     }
                 }
             }
@@ -497,12 +505,11 @@ const WordBank = () => {
                         wordBank.current.set(row.word_category_id, new Map<number, string>())
 
                         updateAccordionDefaults()
-                        clearEditData.current = true
                     })
 
-                } catch (err: any) {
-                    clearEditData.current = false
+                    keysOfNewCategories.current.clear()
 
+                } catch (err: any) {
                     const statusCode = err?.response?.status
 
                     if (statusCode === 401) {
@@ -515,6 +522,9 @@ const WordBank = () => {
                     else {
                         setError({title: "Error Adding New Categories", detail: getErrorDetail(err)})
                     }
+
+                    setSaving(false)
+                    return
                 }
             }
             
@@ -533,13 +543,11 @@ const WordBank = () => {
                         wordBank.current.get(row.word_category_id)!.set(row.word_id, row.word_phrase)
                     })
 
-                    setManualRendersCount(prev => prev + 1)
-                    clearEditData.current = true
+                    newWordPhrases.current.clear()
+                    
                 } 
                 
                 catch (err: any) {
-                    clearEditData.current = false
-                    
                     const statusCode = err?.response?.status
 
                     if (statusCode === 401) {
@@ -552,20 +560,18 @@ const WordBank = () => {
                     else {
                         setError({title: "Error Adding New Words", detail: getErrorDetail(err)})
                     }
+                    
+                    setSaving(false)
+                    return
                 }
             }
             
-            if (clearEditData.current) {
-                clearTempData()
-            }
-
+            clearTempData()
             setSaving(false)
 
         }
         
-        if (clearEditData.current) {
-            setEditMode(!editMode)
-        }
+        setEditMode(!editMode)
 
     }
 
@@ -576,8 +582,6 @@ const WordBank = () => {
         if (addNewCategoryMode) {
             setAddNewCategoryMode(false)
         }
-
-        clearEditData.current = true
 
         setEditMode(false)
     }
@@ -765,7 +769,7 @@ const WordBank = () => {
                                             <Input
                                                 id={"existing-category-" + categoryID.toString()}
                                                 className={`${deleteExistingCategories.current.has(categoryID) ? "border border-red-600 text-red-600" : "border border-border"}`}
-                                                defaultValue={categoryName}
+                                                defaultValue={modifyExistingCategories.current.get(categoryID)! || categoryName}
                                                 onChange={(e) => changeCategoryName(categoryID, e.target.value)}
                                                 disabled={deleteExistingCategories.current.has(categoryID)}
                                             />
