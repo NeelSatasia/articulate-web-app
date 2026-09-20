@@ -47,7 +47,7 @@ async def new_user_word_categories(new_word_categories: List[str], request: Requ
             category = category.strip()
 
             if len(category) == 0 or len(category) > 30:
-                raise HTTPException(status_code=400, detail=f"A category name cannot be empty or have more than 30 characters long.")
+                raise HTTPException(status_code=400, detail=f"A category name cannot be empty or have more than 30 characters.")
 
         existing_categories = await run_in_threadpool(lambda: supabase.table("word_category").select("word_category_id").execute())
         
