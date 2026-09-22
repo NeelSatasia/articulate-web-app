@@ -6,6 +6,7 @@ import Loading from "./Loading"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./ui/accordion"
 import { Button } from "./ui/button"
 import { useNavigate } from "react-router-dom"
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "./ui/hover-card"
 
 const Dashboard = () => {
 
@@ -15,6 +16,11 @@ const Dashboard = () => {
     const [error, setError] = useState<ErrorAlert>({title: "", detail: ""})
 
     const SUCCESS_ATTEMPTS_FACTOR = 3
+
+    const NEEDS_REVIEW = "needs-review"
+    const MAKING_PROGRESS = "making-progress"
+    const MASTERED = "mastered"
+    const NOT_ATTEMPTED_YET = "not-attempted-yet"
 
     useEffect(() => {
         const getWords = async () => {
@@ -46,10 +52,10 @@ const Dashboard = () => {
 
     const categories = (() => {
         const rows: { id: string; title: string; color: string; words: WordPhrase[] }[] = [
-            { id: "needs-review", title: "Needs review", color: "text-red-400", words: [] },
-            { id: "making-progress", title: "Making progress", color: "text-orange-400", words: [] },
-            { id: "strong", title: "Strong", color: "text-green-400", words: [] },
-            { id: "not-attempted-yet", title: "Not attempted yet", color: "text-gray-400", words: [] }
+            { id: NEEDS_REVIEW, title: "Needs review", color: "text-red-400", words: [] },
+            { id: MAKING_PROGRESS, title: "Making progress", color: "text-orange-400", words: [] },
+            { id: MASTERED, title: "Mastered", color: "text-green-400", words: [] },
+            { id: NOT_ATTEMPTED_YET, title: "Not attempted yet", color: "text-gray-400", words: [] }
         ]
 
         for (const word of words) {
@@ -125,14 +131,24 @@ const Dashboard = () => {
                                 <div className="mb-3">
                                     <Button onClick={() => goToPlayground(c.id, c.words)}>Practice</Button>
                                 </div>
-                                <ul className="space-y-2">
+                                <div className="flex flex-row flex-wrap gap-2">
                                     {c.words.map(w => (
-                                        <li key={w.word_id} className="flex justify-between items-center p-2 rounded border bg-white/5">
-                                            <span>{w.word_phrase}</span>
-                                            <small className="text-muted-foreground">{w.last_attempted_at ? `Last: ${new Date(w.last_attempted_at).toLocaleDateString()}` : "Not yet attempted"}</small>
-                                        </li>
+                                        <HoverCard openDelay={0} closeDelay={0}>
+                                            <HoverCardTrigger className={`bg-secondary px-2 py-1 rounded-md text-sm ${c.id !== NOT_ATTEMPTED_YET && "cursor-pointer"}`}>
+                                                {w.word_phrase}
+                                            </HoverCardTrigger>
+                                            {c.id !== NOT_ATTEMPTED_YET &&
+                                                <HoverCardContent>
+                                                    <div className="flex flex-col gap-1 text-sm">
+                                                        <span className="text-green-300">Success Attempts: {w.success_attempts}</span>
+                                                        <span className="text-red-300">Failed Attempts: {w.failed_attempts}</span>
+                                                        <span className="text-gray-300">Last Attempted At: {w.last_attempted_at ? new Date(w.last_attempted_at).toLocaleDateString() : "Not yet attempted"}</span>
+                                                    </div>
+                                                </HoverCardContent>
+                                            }
+                                        </HoverCard>
                                     ))}
-                                </ul>
+                                </div>
                             </>
                             }
                         </AccordionContent>
