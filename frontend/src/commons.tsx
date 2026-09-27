@@ -56,7 +56,7 @@ export interface Evaluation {
     correct: boolean
     feedback?: string
     example?: string
-    answer_explanation?: string
+    example_explanation?: string
 }
 
 export interface ChatMessage {

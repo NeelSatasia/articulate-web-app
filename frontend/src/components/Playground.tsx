@@ -208,10 +208,10 @@ const Playground = () => {
                             <p>{messageContent.example}</p>
                         </div>
                     )}
-                    {messageContent.answer_explanation && (
+                    {messageContent.example_explanation && (
                         <div className="flex flex-col gap-y-1">
                             <WhiteLabelBlock value="Explanation" />
-                            <p>{messageContent.answer_explanation}</p>
+                            <p>{messageContent.example_explanation}</p>
                         </div>
                     )}
                 </div>
