@@ -8,30 +8,6 @@ import { Button } from "./ui/button"
 import { Spinner } from "./ui/spinner"
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
-type SpeechRecognitionResultLike = {
-    isFinal: boolean
-    0: {
-        transcript: string
-    }
-}
-
-type SpeechRecognitionEventLike = {
-    results: ArrayLike<SpeechRecognitionResultLike>
-}
-
-type SpeechRecognitionLike = {
-    lang: string
-    continuous: boolean
-    interimResults: boolean
-    onresult: ((event: SpeechRecognitionEventLike) => void) | null
-    onerror: (() => void) | null
-    onend: (() => void) | null
-    start: () => void
-    stop: () => void
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike
-
 
 const Playground = () => {
 
@@ -39,15 +15,11 @@ const Playground = () => {
 
     const [userResponse, setUserResponse] = useState<string>("")
     const [isModelLoading, setIsModelLoading] = useState<boolean>(false)
-    const [speechSupported, setSpeechSupported] = useState<boolean>(true)
-    const [isListening, setIsListening] = useState<boolean>(false)
     const [currentIndex, setCurrentIndex] = useState<number>(0)
     const [error, setError] = useState<ErrorAlert>({ title: "", detail: "" })
     const messages = useRef<ChatMessage[]>([])
     const remainingAttempts = useRef<number>(3)
     const isPracticing = useRef<boolean>(false)
-    const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
-    const baseResponseRef = useRef<string>("")
 
     const location = useLocation()
     
@@ -262,23 +234,6 @@ const Playground = () => {
         resetUserResponsesAttempts()
     }
 
-    const toggleSpeechToText = () => {
-        const recognition = recognitionRef.current
-
-        if (!recognition) {
-            return
-        }
-
-        if (isListening) {
-            recognition.stop()
-            return
-        }
-
-        baseResponseRef.current = userResponse.trim()
-        recognition.start()
-        setIsListening(true)
-    }
-
     useEffect(() => {
         const getAuth = async () => {
             try {
@@ -294,58 +249,6 @@ const Playground = () => {
         }
 
         getAuth()
-    }, [])
-
-    useEffect(() => {
-        const speechWindow = window as Window & {
-            SpeechRecognition?: SpeechRecognitionConstructor
-            webkitSpeechRecognition?: SpeechRecognitionConstructor
-        }
-
-        const RecognitionClass = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition
-
-        if (!RecognitionClass) {
-            setSpeechSupported(false)
-            return
-        }
-
-        const recognition = new RecognitionClass()
-        recognition.lang = "en-US"
-        recognition.continuous = true
-        recognition.interimResults = true
-
-        recognition.onresult = (event) => {
-            const transcript = Array.from(event.results)
-                .map((result) => result[0].transcript)
-                .join(" ")
-                .trim()
-
-            if (!transcript) {
-                return
-            }
-
-            const nextResponse = [baseResponseRef.current, transcript]
-                .filter(Boolean)
-                .join(" ")
-                .trim()
-
-            setUserResponse(capitalizeFirstLetterOfFirstWord(nextResponse))
-        }
-
-        recognition.onerror = () => {
-            setIsListening(false)
-        }
-
-        recognition.onend = () => {
-            setIsListening(false)
-        }
-
-        recognitionRef.current = recognition
-
-        return () => {
-            recognition.stop()
-            recognitionRef.current = null
-        }
     }, [])
 
     if (words.length === 0) {
@@ -420,16 +323,6 @@ const Playground = () => {
                         disabled={isModelLoading || !isPracticing.current}
                         className="h-12 rounded-full border-border bg-background px-5 text-base shadow-inner shadow-black/5 transition placeholder:text-muted-foreground focus-visible:ring-ring/40 sm:flex-1"
                     />
-
-                    <Button
-                        type="button"
-                        variant={isListening ? "secondary" : "outline"}
-                        onClick={toggleSpeechToText}
-                        disabled={!speechSupported || isModelLoading || !isPracticing.current}
-                        className="mt-3 w-full rounded-full sm:mt-0 sm:w-fit"
-                    >
-                        {isListening ? "Stop Mic" : "Start Mic"}
-                    </Button>
                 </div>
             </div>
         </div>
