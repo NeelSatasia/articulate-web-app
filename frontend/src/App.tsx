@@ -37,11 +37,6 @@ function App() {
                             <p className="mt-2 text-sm leading-6 text-muted-foreground">Each practice round starts with a situation that naturally calls for the target word.</p>
                         </div>
                         <div className="rounded-2xl border bg-card p-5 shadow-sm">
-                            <Mic className="size-5 text-primary" />
-                            <p className="mt-4 text-sm font-semibold">Voice input</p>
-                            <p className="mt-2 text-sm leading-6 text-muted-foreground">Speak your response and let the playground update the answer field for you.</p>
-                        </div>
-                        <div className="rounded-2xl border bg-card p-5 shadow-sm">
                             <MessageSquareText className="size-5 text-primary" />
                             <p className="mt-4 text-sm font-semibold">Structured feedback</p>
                             <p className="mt-2 text-sm leading-6 text-muted-foreground">See a clean result view: situation, correct/incorrect status, feedback, and example when needed.</p>
