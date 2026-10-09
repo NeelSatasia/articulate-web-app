@@ -1,7 +1,7 @@
 import { initAuthInLocalStorage } from "./commons"
 import { Button } from "./components/ui/button"
 import { backendServiceURL } from "./commons"
-import { BookText, Mic, MessageSquareText, Layers3, ArrowRight } from "lucide-react"
+import { BookText, MessageSquareText, Layers3, ArrowRight } from "lucide-react"
 
 function App() {
 
